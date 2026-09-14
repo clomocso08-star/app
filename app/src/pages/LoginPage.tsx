@@ -2,15 +2,14 @@
 
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, LogIn, Mail, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, LogIn, Mail, Eye, EyeOff, Lock } from 'lucide-react';
 import { useApp } from '../store';
 import { useToast } from '../toast';
-import { loginUser } from '../services';
+import { loginUser, mapSupabaseUser } from '../data/auth';
 
-// Configurable constants
 const ROUTES = {
   REGISTER: '/register',
-  HOME: '/', // 👈 HOME PAGE
+  HOME: '/',
 } as const;
 
 export default function LoginPage() {
@@ -27,27 +26,32 @@ export default function LoginPage() {
     event.preventDefault();
     setIsSubmitting(true);
     try {
-      // Fixed role to 'Student' since students only
-      const result = await loginUser(email, password, 'Student');
-      if (!result.success || !result.user) {
-        toast(result.message, 'danger');
-        return;
-      }
+      const result = await loginUser(email, password);
+      const user = mapSupabaseUser(result.user);
 
-      signIn(result.user);
-      toast(`Welcome back, ${result.user.name}.`, 'success');
-      // 👇 DIRECT TO HOME PAGE
+      signIn({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        idNumber: user.studentId,
+        organization: 'SJCM General',
+      } as any);
+
+      toast(`Welcome back, ${user.name}.`, 'success');
       navigate(ROUTES.HOME, { replace: true });
     } catch (error) {
-      toast('Login failed. Please try again.', 'danger');
+      console.error('Login error:', error);
+      toast(
+        error instanceof Error ? error.message : 'Login failed. Please try again.',
+        'danger',
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   return (
     <main className="page-shell auth-shell">
@@ -56,13 +60,22 @@ export default function LoginPage() {
           <div className="auth-icon">
             <LogIn className="react-icon" aria-hidden="true" />
           </div>
-          <h1 id="login-title" className="auth-panel__title">Welcome back</h1>
-          <p className="auth-panel__description">Sign in to reserve merchandise and track pickup.</p>
+          <h1 id="login-title" className="auth-panel__title">
+            Welcome back
+          </h1>
+          <p className="auth-panel__description">
+            Sign in to reserve merchandise and track pickup.
+          </p>
         </header>
 
-        <form className="auth-form" onSubmit={(event) => void handleSubmit(event)}>
+        <form
+          className="auth-form"
+          onSubmit={(event) => void handleSubmit(event)}
+        >
           <div className="field">
-            <label className="field-label" htmlFor="login-email">Student email address</label>
+            <label className="field-label" htmlFor="login-email">
+              Student email address
+            </label>
             <div className="field-control--icon">
               <Mail className="react-icon" aria-hidden="true" />
               <input
@@ -79,8 +92,11 @@ export default function LoginPage() {
           </div>
 
           <div className="field">
-            <label className="field-label" htmlFor="login-password">Password</label>
+            <label className="field-label" htmlFor="login-password">
+              Password
+            </label>
             <div className="field-control--icon">
+              <Lock className="react-icon" aria-hidden="true" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="login-password"
@@ -106,7 +122,11 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <button type="submit" className="button button--primary button--block" disabled={isSubmitting}>
+          <button
+            type="submit"
+            className="button button--primary button--block"
+            disabled={isSubmitting}
+          >
             <span>{isSubmitting ? 'Signing in…' : 'Sign in'}</span>
             <ArrowRight className="react-icon" aria-hidden="true" />
           </button>
