@@ -5,7 +5,7 @@ import App from './App';
 import { AppProvider } from './store';
 import { ToastProvider } from './toast';
 import { ensureSeeded } from './data/seed';
-import './index.css';
+import './styles/index.css'
 
 /**
  * Seeding is async because passwords are hashed with the Web Crypto API, so the
