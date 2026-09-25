@@ -2,17 +2,28 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, LogIn, Mail, Eye, EyeOff, Lock, AlertCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  UserRound,
+} from 'lucide-react';
+import AuthCard from '../components/auth/AuthCard';
+import AuthHeader from '../components/auth/AuthHeader';
+import GuidelinesPanel from '../components/auth/GuidelinesPanel';
+import ImageMarquee from '../components/auth/ImageMarquee';
 import { useApp } from '../store';
 import { useToast } from '../toast';
-import { loginUser, mapSupabaseUser } from '../data/auth';
 import {
-  checkRateLimit,
-  recordFailedAttempt,
   clearRateLimit,
+  checkRateLimit,
   formatLockoutTime,
   RATE_LIMIT_CONFIG,
+  recordFailedAttempt,
 } from '../data/rateLimit';
+import { loginUser, mapSupabaseUser } from '../data/auth';
 
 const ROUTES = {
   REGISTER: '/register',
@@ -24,21 +35,17 @@ export default function LoginPage() {
   const toast = useToast();
   const { signIn } = useApp();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  // Rate limit state
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
-  const [attemptsRemaining, setAttemptsRemaining] = useState(
-    RATE_LIMIT_CONFIG.MAX_ATTEMPTS,
-  );
+  const [attemptsRemaining, setAttemptsRemaining] = useState(RATE_LIMIT_CONFIG.MAX_ATTEMPTS);
 
-  // ============================================
-  // LOCKOUT COUNTDOWN TIMER
-  // ============================================
+  const isLocked = lockedUntil !== null && secondsLeft > 0;
+
+  // Lockout countdown
   useEffect(() => {
     if (!lockedUntil) return;
 
@@ -48,72 +55,67 @@ export default function LoginPage() {
         setLockedUntil(null);
         setSecondsLeft(0);
         setAttemptsRemaining(RATE_LIMIT_CONFIG.MAX_ATTEMPTS);
-        clearRateLimit(email);
+        clearRateLimit(loginIdentifier);
         return;
       }
       setSecondsLeft(remaining);
     };
 
-    tick(); // initial call
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [lockedUntil, email]);
+    tick();
+    const interval = window.setInterval(tick, 1000);
+    return () => window.clearInterval(interval);
+  }, [lockedUntil, loginIdentifier]);
 
-  // ============================================
-  // CHECK RATE LIMIT WHEN EMAIL CHANGES
-  // ============================================
+  // Check rate limit when identifier changes
   useEffect(() => {
-    if (!email.trim()) return;
-    const status = checkRateLimit(email);
+    if (!loginIdentifier.trim()) {
+      setAttemptsRemaining(RATE_LIMIT_CONFIG.MAX_ATTEMPTS);
+      setLockedUntil(null);
+      setSecondsLeft(0);
+      return;
+    }
+
+    const status = checkRateLimit(loginIdentifier);
+    setAttemptsRemaining(status.attemptsRemaining);
     if (!status.allowed && status.lockedUntil) {
       setLockedUntil(status.lockedUntil);
       setSecondsLeft(status.secondsUntilUnlock);
     }
-    setAttemptsRemaining(status.attemptsRemaining);
-  }, [email]);
+  }, [loginIdentifier]);
 
-  const isLocked = lockedUntil !== null && secondsLeft > 0;
-
-  // ============================================
-  // SUBMIT
-  // ============================================
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // Check rate limit first
-    const status = checkRateLimit(email);
+    const status = checkRateLimit(loginIdentifier);
     if (!status.allowed) {
       setLockedUntil(status.lockedUntil);
       setSecondsLeft(status.secondsUntilUnlock);
       toast(
-        `Too many failed attempts. Please try again in ${formatLockoutTime(status.secondsUntilUnlock)}.`,
+        `Too many failed attempts. Try again in ${formatLockoutTime(status.secondsUntilUnlock)}.`,
         'danger',
       );
       return;
     }
 
-    setIsSubmitting(true);
+    setIsLoginSubmitting(true);
     try {
-      const result = await loginUser(email, password);
+      const result = await loginUser(loginIdentifier, loginPassword);
       const user = mapSupabaseUser(result.user);
+      const appRole = user.role === 'Staff' ? 'School Staff' : user.role;
 
-      // ✅ Successful login → clear rate limit
-      clearRateLimit(email);
-
+      clearRateLimit(loginIdentifier);
       signIn({
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        idNumber: user.studentId,
+        role: appRole,
+        idNumber: user.studentId ?? '',
         organization: 'SJCM General',
-      } as any);
-
+      });
       toast(`Welcome back, ${user.name}.`, 'success');
       navigate(ROUTES.HOME, { replace: true });
     } catch (error) {
-      // ❌ Failed login → record attempt
-      const newStatus = recordFailedAttempt(email);
+      const newStatus = recordFailedAttempt(loginIdentifier);
       setAttemptsRemaining(newStatus.attemptsRemaining);
 
       if (!newStatus.allowed && newStatus.lockedUntil) {
@@ -132,143 +134,115 @@ export default function LoginPage() {
         );
       }
     } finally {
-      setIsSubmitting(false);
+      setIsLoginSubmitting(false);
     }
   };
 
-  const togglePasswordVisibility = () => setShowPassword(!showPassword);
-
   return (
-    <main className="page-shell auth-shell">
-      <section className="auth-panel" aria-labelledby="login-title">
-        <header className="auth-panel__header">
-          <div className="auth-icon">
-            <LogIn className="react-icon" aria-hidden="true" />
-          </div>
-          <h1 id="login-title" className="auth-panel__title">
-            Welcome back
-          </h1>
-          <p className="auth-panel__description">
-            Sign in to reserve merchandise and track pickup.
-          </p>
-        </header>
+    <main className="auth-experience">
+      <AuthHeader
+        identifier={loginIdentifier}
+        password={loginPassword}
+        isSubmitting={isLoginSubmitting}
+        isLocked={isLocked}
+        onIdentifierChange={setLoginIdentifier}
+        onPasswordChange={setLoginPassword}
+        onSubmit={(event) => void handleLoginSubmit(event)}
+      />
 
-        {/* Rate limit warning */}
-        {isLocked ? (
-          <div
-            className="callout"
-            role="alert"
-            style={{
-              marginBottom: '1rem',
-              borderColor: 'rgba(156, 55, 55, 0.35)',
-              background: 'var(--color-danger-soft)',
-              color: 'var(--color-danger)',
-            }}
-          >
-            <AlertCircle className="react-icon" aria-hidden="true" />
-            <span>
-              <strong>Account temporarily locked.</strong> Too many failed
-              login attempts. Please wait{' '}
-              <strong>{formatLockoutTime(secondsLeft)}</strong> before trying
-              again.
-            </span>
-          </div>
-        ) : attemptsRemaining < RATE_LIMIT_CONFIG.MAX_ATTEMPTS ? (
-          <div
-            className="callout"
-            role="status"
-            style={{
-              marginBottom: '1rem',
-              borderColor: 'rgba(156, 98, 30, 0.35)',
-              background: 'var(--color-warning-soft)',
-              color: 'var(--color-warning)',
-            }}
-          >
-            <AlertCircle className="react-icon" aria-hidden="true" />
-            <span>
-              Warning: <strong>{attemptsRemaining}</strong> attempt
-              {attemptsRemaining === 1 ? '' : 's'} remaining before your
-              account is temporarily locked.
-            </span>
-          </div>
-        ) : null}
+      <div className="auth-experience__content">
+        <GuidelinesPanel />
+        <ImageMarquee />
 
-        <form
-          className="auth-form"
-          onSubmit={(event) => void handleSubmit(event)}
+        <AuthCard
+          mode="login"
+          title="Welcome back"
+          description="Sign in to reserve merchandise and track pickup."
         >
-          <div className="field">
-            <label className="field-label" htmlFor="login-email">
-              Student email address
-            </label>
-            <div className="field-control--icon">
-              <Mail className="react-icon" aria-hidden="true" />
-              <input
-                type="email"
-                id="login-email"
-                className="field-control"
-                required
-                autoComplete="email"
-                placeholder="student@phinmaed.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                disabled={isLocked}
-              />
+          {isLocked ? (
+            <div className="auth-callout auth-callout--danger" role="alert">
+              <AlertCircle className="react-icon" aria-hidden="true" />
+              <span>
+                Account temporarily locked. Try again in{' '}
+                <strong>{formatLockoutTime(secondsLeft)}</strong>.
+              </span>
             </div>
-          </div>
-
-          <div className="field">
-            <label className="field-label" htmlFor="login-password">
-              Password
-            </label>
-            <div className="field-control--icon">
-              <Lock className="react-icon" aria-hidden="true" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="login-password"
-                className="field-control"
-                required
-                autoComplete="current-password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                disabled={isLocked}
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={togglePasswordVisibility}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <EyeOff className="react-icon" aria-hidden="true" />
-                ) : (
-                  <Eye className="react-icon" aria-hidden="true" />
-                )}
-              </button>
+          ) : attemptsRemaining < RATE_LIMIT_CONFIG.MAX_ATTEMPTS ? (
+            <div className="auth-callout auth-callout--warning" role="status">
+              <AlertCircle className="react-icon" aria-hidden="true" />
+              <span>
+                {attemptsRemaining} login attempt{attemptsRemaining === 1 ? '' : 's'} remaining.
+              </span>
             </div>
-          </div>
+          ) : null}
 
-          <button
-            type="submit"
-            className="button button--primary button--block"
-            disabled={isSubmitting || isLocked}
+          <form
+            className="auth-form auth-form--login"
+            onSubmit={(event) => void handleLoginSubmit(event)}
           >
-            <span>
-              {isLocked
-                ? `Locked (${formatLockoutTime(secondsLeft)})`
-                : isSubmitting
-                  ? 'Signing in…'
-                  : 'Sign in'}
-            </span>
-            <ArrowRight className="react-icon" aria-hidden="true" />
-          </button>
-        </form>
+            <div className="auth-field">
+              <label htmlFor="login-username">Username</label>
+              <div className="auth-input-wrap">
+                <UserRound className="react-icon" aria-hidden="true" />
+                <input
+                  id="login-username"
+                  className="auth-input"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="username"
+                  required
+                  value={loginIdentifier}
+                  onChange={(event) => setLoginIdentifier(event.target.value)}
+                  disabled={isLocked}
+                />
+              </div>
+            </div>
 
-        <footer className="auth-footer">
-          Don't have an account? <Link to={ROUTES.REGISTER}>Register here</Link>
-        </footer>
-      </section>
+            <div className="auth-field">
+              <label htmlFor="login-password">Password</label>
+              <div className="auth-input-wrap">
+                <LockKeyhole className="react-icon" aria-hidden="true" />
+                <input
+                  id="login-password"
+                  className="auth-input auth-input--with-toggle"
+                  type={showLoginPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  required
+                  value={loginPassword}
+                  onChange={(event) => setLoginPassword(event.target.value)}
+                  disabled={isLocked}
+                />
+                <button
+                  className="auth-password-toggle"
+                  type="button"
+                  onClick={() => setShowLoginPassword((visible) => !visible)}
+                  aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showLoginPassword ? (
+                    <EyeOff className="react-icon" aria-hidden="true" />
+                  ) : (
+                    <Eye className="react-icon" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <button
+              className="auth-submit"
+              type="submit"
+              disabled={isLoginSubmitting || isLocked}
+            >
+              {isLoginSubmitting ? 'Logging in…' : 'Login'}
+              <ArrowRight className="react-icon" aria-hidden="true" />
+            </button>
+          </form>
+
+          <p className="auth-card__switch">
+            Don&apos;t have an account?{' '}
+            <Link to={ROUTES.REGISTER}>Register here</Link>
+          </p>
+        </AuthCard>
+      </div>
     </main>
   );
 }

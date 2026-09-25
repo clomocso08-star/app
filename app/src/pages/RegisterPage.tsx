@@ -1,574 +1,466 @@
 // src/pages/RegisterPage.tsx
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
-  UserRoundPlus,
+  CheckCircle2,
   Eye,
   EyeOff,
+  IdCard,
+  LockKeyhole,
   Mail,
-  Lock,
-  User,
-  CreditCard,
+  RefreshCw,
   ShieldCheck,
+  UserRound,
 } from 'lucide-react';
+import AuthCard from '../components/auth/AuthCard';
+import AuthHeader from '../components/auth/AuthHeader';
+import GuidelinesPanel from '../components/auth/GuidelinesPanel';
+import ImageMarquee from '../components/auth/ImageMarquee';
+import type { AuthStage } from '../components/auth/authTypes';
 import { useApp } from '../store';
 import { useToast } from '../toast';
 import {
-  registerUser,
-  verifyOtp,
-  resendOtp,
-  mapSupabaseUser,
-} from '../data/auth';
-import {
-  isValidEmail,
+  getPasswordErrorMessage,
   isPhinmaedEmail,
+  isValidEmail,
   isValidStudentId,
   PHINMAED_DOMAIN,
   STUDENT_ID_EXAMPLE,
-  getPasswordErrorMessage,
 } from '../data/validation';
+import { mapSupabaseUser, registerUser, resendOtp, verifyOtp } from '../data/auth';
+
+type RegistrationErrors = {
+  name?: string;
+  email?: string;
+  idNumber?: string;
+  password?: string;
+  confirmPassword?: string;
+  otp?: string;
+};
+
+const OTP_LENGTH = 6;
+const OTP_EXPIRY_SECONDS = 300;
 
 const ROUTES = {
   LOGIN: '/login',
   DASHBOARD: '/dashboard',
 } as const;
 
-type Stage = 'register' | 'otp' | 'success';
-
-/** Must match the Supabase "Email OTP length" setting (Auth → Providers → Email). */
-const OTP_LENGTH = 6;
-const OTP_EXPIRY_SECONDS = 300; // 5 minutes
-
 export default function RegisterPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const { signIn } = useApp();
 
-  // Stage control
-  const [stage, setStage] = useState<Stage>('register');
-
-  // Form states
+  const [stage, setStage] = useState<AuthStage>('register');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // OTP states
   const [otp, setOtp] = useState('');
   const [timeLeft, setTimeLeft] = useState(OTP_EXPIRY_SECONDS);
+  const [isRegisterSubmitting, setIsRegisterSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
-
-  // Password visibility
-  const [showPassword, setShowPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<RegistrationErrors>({});
 
-  // Validation errors
-  const [errors, setErrors] = useState<{
-    name?: string;
-    email?: string;
-    idNumber?: string;
-    password?: string;
-    confirmPassword?: string;
-    otp?: string;
-  }>({});
-
-  // ⏱️ OTP countdown timer
+  // OTP countdown timer
   useEffect(() => {
     if (stage !== 'otp') return;
     if (timeLeft <= 0) {
-      setErrors((prev) => ({ ...prev, otp: 'Expired na ang OTP. Paki-resend.' }));
+      setErrors((previous) => ({
+        ...previous,
+        otp: 'This verification code has expired. Resend it to continue.',
+      }));
       return;
     }
-    const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-    return () => clearInterval(timer);
+
+    const timer = window.setInterval(() => {
+      setTimeLeft((previous) => Math.max(0, previous - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
   }, [stage, timeLeft]);
 
-  // ============================================
-  // VALIDATION
-  // ============================================
-  const validateForm = (): boolean => {
-    const newErrors: typeof errors = {};
+  // Auto-redirect on success
+  useEffect(() => {
+    if (stage !== 'success') return;
+    const timer = window.setTimeout(
+      () => navigate(ROUTES.DASHBOARD, { replace: true }),
+      1200,
+    );
+    return () => window.clearTimeout(timer);
+  }, [navigate, stage]);
 
-    // Full name
-    if (!name.trim()) {
-      newErrors.name = 'Full name is required.';
-    } else if (name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters.';
-    }
+  const validateRegistration = (): boolean => {
+    const nextErrors: RegistrationErrors = {};
 
-    // Email
-    if (!email.trim()) {
-      newErrors.email = 'Email address is required.';
-    } else if (!isValidEmail(email)) {
-      newErrors.email = 'Please enter a valid email address.';
-    } else if (!isPhinmaedEmail(email)) {
-      newErrors.email = `Email must end with ${PHINMAED_DOMAIN}.`;
-    }
+    if (!name.trim()) nextErrors.name = 'Username is required.';
+    else if (name.trim().length < 2) nextErrors.name = 'Username must be at least 2 characters.';
 
-    // Student ID
-    if (!idNumber.trim()) {
-      newErrors.idNumber = 'Student ID number is required.';
-    } else if (!isValidStudentId(idNumber)) {
-      newErrors.idNumber = `Format: ${STUDENT_ID_EXAMPLE}`;
-    }
+    if (!email.trim()) nextErrors.email = 'Email address is required.';
+    else if (!isValidEmail(email)) nextErrors.email = 'Please enter a valid email address.';
+    else if (!isPhinmaedEmail(email)) nextErrors.email = `Email must end with ${PHINMAED_DOMAIN}.`;
 
-    // Password
-    const pwdError = getPasswordErrorMessage(password);
-    if (pwdError) newErrors.password = pwdError;
+    if (!idNumber.trim()) nextErrors.idNumber = 'Student ID number is required.';
+    else if (!isValidStudentId(idNumber)) nextErrors.idNumber = `Format: ${STUDENT_ID_EXAMPLE}`;
 
-    // Confirm password
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password.';
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match.';
-    }
+    const passwordError = getPasswordErrorMessage(password);
+    if (passwordError) nextErrors.password = passwordError;
+    if (!confirmPassword) nextErrors.confirmPassword = 'Please confirm your password.';
+    else if (password !== confirmPassword) nextErrors.confirmPassword = 'Passwords do not match.';
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
-  // ============================================
-  // STEP 1: REGISTER → SEND OTP
-  // ============================================
-  const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
+  const handleRegisterSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (!validateForm()) {
-      toast('Please fix the errors before submitting.', 'warning');
+    if (!validateRegistration()) {
+      toast('Please review the highlighted fields before creating your account.', 'warning');
       return;
     }
 
-    setIsSubmitting(true);
+    setIsRegisterSubmitting(true);
     try {
-      await registerUser({
-        name,
-        email,
-        password,
-        studentId: idNumber,
-      });
-
-      toast('Nagpadala kami ng OTP sa email mo. Tingnan ang inbox.', 'success');
+      await registerUser({ name, email, password, studentId: idNumber });
+      toast('A verification code was sent to your email.', 'success');
       setStage('otp');
       setTimeLeft(OTP_EXPIRY_SECONDS);
       setOtp('');
     } catch (error) {
-      console.error('Register error:', error);
       toast(
         error instanceof Error ? error.message : 'Registration failed. Please try again.',
         'danger',
       );
     } finally {
-      setIsSubmitting(false);
+      setIsRegisterSubmitting(false);
     }
   };
 
-  // ============================================
-  // STEP 2: VERIFY OTP
-  // ============================================
   const handleVerifyOtp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     if (otp.length !== OTP_LENGTH) {
-      setErrors((prev) => ({
-        ...prev,
-        otp: `Ilagay ang ${OTP_LENGTH}-digit code.`,
+      setErrors((previous) => ({
+        ...previous,
+        otp: `Enter the ${OTP_LENGTH}-digit verification code.`,
       }));
       return;
     }
 
-    setIsSubmitting(true);
-    setErrors((prev) => ({ ...prev, otp: undefined }));
-
+    setIsRegisterSubmitting(true);
+    setErrors((previous) => ({ ...previous, otp: undefined }));
     try {
       const result = await verifyOtp(email, otp);
       const user = mapSupabaseUser(result.user);
+      const appRole = user.role === 'Staff' ? 'School Staff' : user.role;
 
-      // Update app state
       signIn({
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        idNumber: user.studentId,
+        role: appRole,
+        idNumber: user.studentId ?? idNumber,
         organization: 'SJCM General',
-      } as any);
-
+      });
       setStage('success');
-      toast('Verified! Redirecting sa dashboard...', 'success');
-
-      setTimeout(() => navigate(ROUTES.DASHBOARD, { replace: true }), 1200);
+      toast('Your account is verified. Redirecting to your dashboard.', 'success');
     } catch (error) {
-      console.error('Verify OTP error:', error);
-      setErrors((prev) => ({
-        ...prev,
-        otp:
-          error instanceof Error
-            ? error.message
-            : 'Mali o expired ang OTP. Subukan ulit.',
+      setErrors((previous) => ({
+        ...previous,
+        otp: error instanceof Error ? error.message : 'The code is invalid or expired. Try again.',
       }));
     } finally {
-      setIsSubmitting(false);
+      setIsRegisterSubmitting(false);
     }
   };
 
-  // ============================================
-  // RESEND OTP
-  // ============================================
   const handleResendOtp = async () => {
     setIsResending(true);
-    setErrors((prev) => ({ ...prev, otp: undefined }));
+    setErrors((previous) => ({ ...previous, otp: undefined }));
     try {
       await resendOtp(email);
-      toast('Bagong OTP ang ipinadala.', 'success');
+      toast('A new verification code was sent.', 'success');
       setTimeLeft(OTP_EXPIRY_SECONDS);
       setOtp('');
     } catch (error) {
-      console.error('Resend OTP error:', error);
-      toast(
-        error instanceof Error ? error.message : 'Hindi ma-resend ang OTP.',
-        'danger',
-      );
+      toast(error instanceof Error ? error.message : 'Unable to resend the code.', 'danger');
     } finally {
       setIsResending(false);
     }
   };
 
-  const togglePasswordVisibility = () => setShowPassword(!showPassword);
-  const toggleConfirmPasswordVisibility = () =>
-    setShowConfirmPassword(!showConfirmPassword);
-
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60)
-      .toString()
-      .padStart(2, '0');
-    const sec = (s % 60).toString().padStart(2, '0');
-    return `${m}:${sec}`;
+  const formatOtpTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const remainder = (seconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${remainder}`;
   };
 
-  // ============================================
-  // RENDER: OTP STAGE
-  // ============================================
-  if (stage === 'otp') {
-    return (
-      <main className="register-page">
-        <div className="register-bg">
-          <div className="register-glow glow-1" />
-          <div className="register-glow glow-2" />
-        </div>
-
-        <div className="register-container glass">
-          <header className="register-header">
-            <div className="register-icon">
-              <ShieldCheck className="react-icon" aria-hidden="true" />
-            </div>
-            <h1 className="register-title">I-enter ang OTP</h1>
-            <p className="register-description">
-              Nagpadala kami ng {OTP_LENGTH}-digit verification code sa{' '}
-              <b>{email}</b>. Ilagay ito sa loob ng 5 minuto.
-            </p>
-          </header>
-
-          <form className="register-form" onSubmit={handleVerifyOtp}>
-            <div className="register-field">
-              <label className="register-label" htmlFor="register-otp">
-                <Lock className="react-icon" aria-hidden="true" />
-                <span>One-Time Password</span>
-              </label>
-              <input
-                type="text"
-                id="register-otp"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={OTP_LENGTH}
-                className={`register-input glass-input register-otp-input ${
-                  errors.otp ? 'register-input--error' : ''
-                }`}
-                placeholder={'0'.repeat(OTP_LENGTH)}
-                value={otp}
-                onChange={(e) => {
-                  setOtp(e.target.value.replace(/\D/g, ''));
-                  if (errors.otp) setErrors({ ...errors, otp: undefined });
-                }}
-                autoFocus
-              />
-              {errors.otp && <span className="register-error">{errors.otp}</span>}
-
-              <div className="register-otp-meta">
-                <span
-                  className={`register-otp-timer ${
-                    timeLeft < 60 ? 'is-danger' : ''
-                  }`}
-                >
-                  ⏱️ Expires in: <b>{formatTime(timeLeft)}</b>
-                </span>
-                <button
-                  type="button"
-                  className="register-otp-resend"
-                  onClick={handleResendOtp}
-                  disabled={isResending || timeLeft > OTP_EXPIRY_SECONDS - 30}
-                >
-                  {isResending ? 'Sending...' : 'Resend OTP'}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="register-submit glass-btn"
-              disabled={
-                isSubmitting || timeLeft <= 0 || otp.length !== OTP_LENGTH
-              }
-            >
-              <span>{isSubmitting ? 'Verifying...' : 'Verify OTP'}</span>
-              <ArrowRight className="react-icon" aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              className="register-otp-back"
-              onClick={() => {
-                setStage('register');
-                setOtp('');
-                setErrors({});
-              }}
-            >
-              ← Bumalik sa registration
-            </button>
-          </form>
-        </div>
-      </main>
-    );
-  }
-
-  // ============================================
-  // RENDER: SUCCESS STAGE
-  // ============================================
-  if (stage === 'success') {
-    return (
-      <main className="register-page">
-        <div className="register-bg">
-          <div className="register-glow glow-1" />
-          <div className="register-glow glow-2" />
-        </div>
-        <div className="register-container glass">
-          <header className="register-header">
-            <div className="register-icon">
-              <ShieldCheck className="react-icon" aria-hidden="true" />
-            </div>
-            <h1 className="register-title">✅ Verified!</h1>
-            <p className="register-description">Redirecting sa dashboard...</p>
-          </header>
-        </div>
-      </main>
-    );
-  }
-
-  // ============================================
-  // RENDER: REGISTER STAGE
-  // ============================================
   return (
-    <main className="register-page">
-      <div className="register-bg">
-        <div className="register-glow glow-1" />
-        <div className="register-glow glow-2" />
-      </div>
+    <main className="auth-experience">
+      <AuthHeader
+        identifier=""
+        password=""
+        isSubmitting={false}
+        isLocked={false}
+        onIdentifierChange={() => {}}
+        onPasswordChange={() => {}}
+        onSubmit={() => {}}
+      />
 
-      <div className="register-container glass">
-        <header className="register-header">
-          <div className="register-icon">
-            <UserRoundPlus className="react-icon" aria-hidden="true" />
-          </div>
-          <h1 className="register-title">Create a Student Account</h1>
-          <p className="register-description">
-            Register as a student to reserve SJCM uniforms and organization
-            merchandise.
-          </p>
-        </header>
+      <div className="auth-experience__content">
+        <GuidelinesPanel />
+        <ImageMarquee />
 
-        <form className="register-form" onSubmit={handleRegister}>
-          {/* Full Name */}
-          <div className="register-field">
-            <label className="register-label" htmlFor="register-name">
-              <User className="react-icon" aria-hidden="true" />
-              <span>Full Name</span>
-            </label>
-            <input
-              type="text"
-              id="register-name"
-              className={`register-input glass-input ${
-                errors.name ? 'register-input--error' : ''
-              }`}
-              placeholder="e.g. Juan dela Cruz"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (errors.name) setErrors({ ...errors, name: undefined });
-              }}
-            />
-            {errors.name && (
-              <span className="register-error">{errors.name}</span>
-            )}
-          </div>
-
-          {/* Email */}
-          <div className="register-field">
-            <label className="register-label" htmlFor="register-email">
-              <Mail className="react-icon" aria-hidden="true" />
-              <span>Email Address</span>
-            </label>
-            <input
-              type="email"
-              id="register-email"
-              className={`register-input glass-input ${
-                errors.email ? 'register-input--error' : ''
-              }`}
-              placeholder="name@phinmaed.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (errors.email) setErrors({ ...errors, email: undefined });
-              }}
-            />
-            {errors.email && (
-              <span className="register-error">{errors.email}</span>
-            )}
-            <p className="register-hint">
-              Kailangan {PHINMAED_DOMAIN} ang email mo.
-            </p>
-          </div>
-
-          {/* Student ID */}
-          <div className="register-field">
-            <label className="register-label" htmlFor="register-id">
-              <CreditCard className="react-icon" aria-hidden="true" />
-              <span>Student ID Number</span>
-            </label>
-            <input
-              type="text"
-              id="register-id"
-              className={`register-input glass-input ${
-                errors.idNumber ? 'register-input--error' : ''
-              }`}
-              placeholder={STUDENT_ID_EXAMPLE}
-              value={idNumber}
-              onChange={(e) => {
-                setIdNumber(e.target.value);
-                if (errors.idNumber)
-                  setErrors({ ...errors, idNumber: undefined });
-              }}
-            />
-            {errors.idNumber && (
-              <span className="register-error">{errors.idNumber}</span>
-            )}
-            <p className="register-hint">
-              Format: 06-2526-XXXXXX (halimbawa: {STUDENT_ID_EXAMPLE})
-            </p>
-          </div>
-
-          {/* Password */}
-          <div className="register-field">
-            <label className="register-label" htmlFor="register-password">
-              <Lock className="react-icon" aria-hidden="true" />
-              <span>Password</span>
-            </label>
-            <div className="register-password-wrapper">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="register-password"
-                className={`register-input glass-input ${
-                  errors.password ? 'register-input--error' : ''
-                }`}
-                placeholder=""
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errors.password)
-                    setErrors({ ...errors, password: undefined });
-                }}
-              />
+        <AuthCard
+          mode="register"
+          title={
+            stage === 'otp'
+              ? 'Verify your account'
+              : stage === 'success'
+                ? 'Account verified'
+                : 'Register an Account'
+          }
+          description={
+            stage === 'otp'
+              ? `Enter the ${OTP_LENGTH}-digit code sent to ${email}.`
+              : stage === 'success'
+                ? 'Your SJCM account is ready.'
+                : 'Create your SJCM merchandise account.'
+          }
+        >
+          {stage === 'otp' ? (
+            <form className="auth-form" onSubmit={(event) => void handleVerifyOtp(event)}>
+              <div className="auth-stage-icon">
+                <ShieldCheck className="react-icon" aria-hidden="true" />
+              </div>
+              <div className="auth-field">
+                <label htmlFor="register-otp">One-Time Password</label>
+                <input
+                  id="register-otp"
+                  className={`auth-input auth-input--otp ${errors.otp ? 'has-error' : ''}`}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={OTP_LENGTH}
+                  required
+                  value={otp}
+                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
+                  aria-invalid={Boolean(errors.otp)}
+                  aria-describedby={errors.otp ? 'register-otp-error' : undefined}
+                  autoFocus
+                />
+                {errors.otp ? (
+                  <span id="register-otp-error" className="auth-error">
+                    {errors.otp}
+                  </span>
+                ) : null}
+                <div className="auth-otp-meta">
+                  <span className={timeLeft < 60 ? 'is-danger' : ''}>
+                    Expires in <strong>{formatOtpTime(timeLeft)}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void handleResendOtp()}
+                    disabled={isResending || timeLeft > OTP_EXPIRY_SECONDS - 30}
+                  >
+                    <RefreshCw className="react-icon" aria-hidden="true" />
+                    {isResending ? 'Sending…' : 'Resend'}
+                  </button>
+                </div>
+              </div>
               <button
-                type="button"
-                className="register-password-toggle"
-                onClick={togglePasswordVisibility}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <EyeOff className="react-icon" />
-                ) : (
-                  <Eye className="react-icon" />
-                )}
-              </button>
-            </div>
-            {errors.password && (
-              <span className="register-error">{errors.password}</span>
-            )}
-            <p className="register-hint">
-              Min 8 chars, may uppercase, lowercase, number, at special char
-              (halimbawa: Christian@0110)
-            </p>
-          </div>
-
-          {/* Confirm Password */}
-          <div className="register-field">
-            <label
-              className="register-label"
-              htmlFor="register-confirm-password"
-            >
-              <Lock className="react-icon" aria-hidden="true" />
-              <span>Confirm Password</span>
-            </label>
-            <div className="register-password-wrapper">
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                id="register-confirm-password"
-                className={`register-input glass-input ${
-                  errors.confirmPassword ? 'register-input--error' : ''
-                }`}
-                placeholder="Re-enter your password"
-                value={confirmPassword}
-                onChange={(e) => {
-                  setConfirmPassword(e.target.value);
-                  if (errors.confirmPassword)
-                    setErrors({ ...errors, confirmPassword: undefined });
-                }}
-              />
-              <button
-                type="button"
-                className="register-password-toggle"
-                onClick={toggleConfirmPasswordVisibility}
-                aria-label={
-                  showConfirmPassword ? 'Hide password' : 'Show password'
+                className="auth-submit"
+                type="submit"
+                disabled={
+                  isRegisterSubmitting || timeLeft <= 0 || otp.length !== OTP_LENGTH
                 }
               >
-                {showConfirmPassword ? (
-                  <EyeOff className="react-icon" />
-                ) : (
-                  <Eye className="react-icon" />
-                )}
+                {isRegisterSubmitting ? 'Verifying…' : 'Verify OTP'}
+                <ArrowRight className="react-icon" aria-hidden="true" />
               </button>
+              <button
+                className="auth-text-button"
+                type="button"
+                onClick={() => {
+                  setStage('register');
+                  setOtp('');
+                  setErrors({});
+                }}
+              >
+                Back to registration
+              </button>
+            </form>
+          ) : stage === 'success' ? (
+            <div className="auth-success" role="status">
+              <CheckCircle2 className="auth-success__icon" aria-hidden="true" />
+              <p>Verified successfully.</p>
+              <span>Redirecting to your dashboard…</span>
             </div>
-            {errors.confirmPassword && (
-              <span className="register-error">{errors.confirmPassword}</span>
-            )}
-          </div>
+          ) : (
+            <form className="auth-form" onSubmit={(event) => void handleRegisterSubmit(event)}>
+              <div className="auth-field">
+                <label htmlFor="register-username">Username</label>
+                <div className="auth-input-wrap">
+                  <UserRound className="react-icon" aria-hidden="true" />
+                  <input
+                    id="register-username"
+                    className={`auth-input ${errors.name ? 'has-error' : ''}`}
+                    type="text"
+                    autoComplete="name"
+                    required
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    aria-invalid={Boolean(errors.name)}
+                    aria-describedby={errors.name ? 'register-name-error' : undefined}
+                  />
+                </div>
+                {errors.name ? (
+                  <span id="register-name-error" className="auth-error">
+                    {errors.name}
+                  </span>
+                ) : null}
+              </div>
 
-          <button
-            type="submit"
-            className="register-submit glass-btn"
-            disabled={isSubmitting}
-          >
-            <span>{isSubmitting ? 'Creating account...' : 'Create account'}</span>
-            <ArrowRight className="react-icon" aria-hidden="true" />
-          </button>
-        </form>
+              <div className="auth-field">
+                <label htmlFor="register-email">Email Address</label>
+                <div className="auth-input-wrap">
+                  <Mail className="react-icon" aria-hidden="true" />
+                  <input
+                    id="register-email"
+                    className={`auth-input ${errors.email ? 'has-error' : ''}`}
+                    type="email"
+                    autoComplete="email"
+                    required
+                    placeholder="name@phinmaed.com"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    aria-invalid={Boolean(errors.email)}
+                    aria-describedby={errors.email ? 'register-email-error' : undefined}
+                  />
+                </div>
+                {errors.email ? (
+                  <span id="register-email-error" className="auth-error">
+                    {errors.email}
+                  </span>
+                ) : (
+                  <span className="auth-hint">Use your {PHINMAED_DOMAIN} address.</span>
+                )}
+              </div>
 
-        <footer className="register-footer">
-          Already have an account? <Link to={ROUTES.LOGIN}>Sign in</Link>
-        </footer>
+              <div className="auth-field-grid">
+                <div className="auth-field">
+                  <label htmlFor="register-id">Student ID</label>
+                  <div className="auth-input-wrap">
+                    <IdCard className="react-icon" aria-hidden="true" />
+                    <input
+                      id="register-id"
+                      className={`auth-input ${errors.idNumber ? 'has-error' : ''}`}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      required
+                      placeholder="06-2526-004945"
+                      value={idNumber}
+                      onChange={(event) => setIdNumber(event.target.value)}
+                      aria-invalid={Boolean(errors.idNumber)}
+                      aria-describedby={errors.idNumber ? 'register-id-error' : undefined}
+                    />
+                  </div>
+                  {errors.idNumber ? (
+                    <span id="register-id-error" className="auth-error">
+                      {errors.idNumber}
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="auth-field">
+                  <label htmlFor="register-password">Password</label>
+                  <div className="auth-input-wrap">
+                    <LockKeyhole className="react-icon" aria-hidden="true" />
+                    <input
+                      id="register-password"
+                      className={`auth-input auth-input--with-toggle ${errors.password ? 'has-error' : ''}`}
+                      type={showRegisterPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      aria-invalid={Boolean(errors.password)}
+                      aria-describedby={errors.password ? 'register-password-error' : undefined}
+                    />
+                    <button
+                      className="auth-password-toggle"
+                      type="button"
+                      onClick={() => setShowRegisterPassword((visible) => !visible)}
+                      aria-label={showRegisterPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showRegisterPassword ? (
+                        <EyeOff className="react-icon" aria-hidden="true" />
+                      ) : (
+                        <Eye className="react-icon" aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.password ? (
+                    <span id="register-password-error" className="auth-error">
+                      {errors.password}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="auth-field">
+                <label htmlFor="register-confirm-password">Confirm Password</label>
+                <div className="auth-input-wrap">
+                  <LockKeyhole className="react-icon" aria-hidden="true" />
+                  <input
+                    id="register-confirm-password"
+                    className={`auth-input auth-input--with-toggle ${errors.confirmPassword ? 'has-error' : ''}`}
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    required
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    aria-invalid={Boolean(errors.confirmPassword)}
+                    aria-describedby={
+                      errors.confirmPassword ? 'register-confirm-password-error' : undefined
+                    }
+                  />
+                  <button
+                    className="auth-password-toggle"
+                    type="button"
+                    onClick={() => setShowConfirmPassword((visible) => !visible)}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="react-icon" aria-hidden="true" />
+                    ) : (
+                      <Eye className="react-icon" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+                {errors.confirmPassword ? (
+                  <span id="register-confirm-password-error" className="auth-error">
+                    {errors.confirmPassword}
+                  </span>
+                ) : null}
+              </div>
+
+              <button className="auth-submit" type="submit" disabled={isRegisterSubmitting}>
+                {isRegisterSubmitting ? 'Creating account…' : 'Create'}
+                <ArrowRight className="react-icon" aria-hidden="true" />
+              </button>
+
+              <p className="auth-card__switch">
+                Already have an account?{' '}
+                <Link to={ROUTES.LOGIN}>Sign in</Link>
+              </p>
+            </form>
+          )}
+        </AuthCard>
       </div>
     </main>
   );
