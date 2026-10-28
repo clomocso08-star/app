@@ -1,0 +1,2075 @@
+/* ==========================================================================
+   Saint Jude College Manila — Auth Experience (refactored)
+
+   • Isang rule lang kada component — walang duplicate, walang "FINAL FIX" layers
+   • Walang :hover kahit saan (focus / active / disabled lang ang natira)
+   • Inputs: neumorphism inset (parehong edge as before)
+   • Buttons: claymorphism  |  Panels: glassmorphism
+   • Theme-aware (lahat galing sa --theme-* variables)
+
+   Specificity note:
+   Ang form controls (input / select / date / eye toggle / autofill) ay naka-scope
+   sa `html body #root .auth-experience` para hindi sila matalo ng global styles.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+/* ==========================================================================
+   1. BODY BACKGROUND
+   ========================================================================== */
+
+body:has(.auth-experience) {
+  background-color: var(--theme-bg-solid) !important;
+  background-image: url('/public/campus-log.png') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+
+/* ==========================================================================
+   2. PAGE WRAPPER + DESIGN TOKENS
+   ========================================================================== */
+
+.auth-experience {
+  /* legacy aliases (ginagamit ng ibang components) */
+  --ink: var(--theme-bg-solid);
+  --pine-900: var(--theme-bg-solid);
+  --pine-800: var(--theme-surface);
+  --pine-700: var(--theme-surface-2);
+  --pine-600: var(--theme-surface-raised, var(--theme-surface-2));
+  --brand-500: var(--theme-primary);
+  --brand-400: var(--theme-primary);
+  --brand-300: var(--theme-primary-hover);
+  --gold-400: var(--theme-accent);
+  --gold-300: var(--theme-accent);
+  --cream-100: var(--theme-text);
+  --cream-200: var(--theme-text-muted);
+  --sage-300: var(--theme-text-muted);
+  --sage-500: var(--theme-text-subtle, var(--theme-text-muted));
+  --hairline: var(--theme-border);
+  --hairline-strong: var(--theme-border-strong);
+  --glass-fill: var(--theme-glass-bg);
+  --glass-fill-soft: var(--theme-glass-bg);
+  --danger-400: var(--theme-danger);
+  --warning-400: var(--theme-warning);
+  --success-400: var(--theme-success);
+  --shadow-deep: var(--theme-shadow-xl);
+
+  /* radii + fonts */
+  --radius-xl: 30px;
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 10px;
+  --font-display: 'Fraunces', 'Iowan Old Style', ui-serif, Georgia, serif;
+  --font-ui: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* neumorphism — EDITO LANG ITO para baguhin ang edge ng lahat ng fields */
+  --auth-inset: inset 3px 3px 6px rgba(0, 0, 0, 0.08),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.6);
+  --auth-inset-soft: inset 3px 3px 6px rgba(0, 0, 0, 0.06),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.5);
+  --auth-ring: 0 0 0 3px rgba(var(--theme-primary-rgb), 0.2);
+  --auth-ring-danger: 0 0 0 3px rgba(var(--theme-danger-rgb), 0.25);
+  --auth-field-h: 3.25rem;
+
+  position: relative;
+  isolation: auto;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 2.6vw, 32px);
+  padding: clamp(16px, 2.5vw, 32px) clamp(16px, 4vw, 56px) clamp(40px, 5vw, 72px);
+  background: transparent !important;
+  color: var(--theme-text);
+  font-family: var(--font-ui);
+  overflow-x: hidden;
+
+}
+
+@supports not (zoom: 1) {
+  .auth-experience {
+    zoom: normal;
+    transform: scale(0.925);
+    transform-origin: top center;
+    width: 108.108%;
+    margin-left: -4.054%;
+    min-height: 108.108vh;
+  }
+}
+
+.auth-experience *,
+.auth-experience *::before,
+.auth-experience *::after {
+  box-sizing: border-box;
+}
+
+/* campus photo overlay */
+.auth-experience::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: url('/public/campus.png');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.35;
+  filter: saturate(0.9) contrast(1.05) brightness(0.7);
+  pointer-events: none;
+}
+
+/* theme tint overlay */
+.auth-experience::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--theme-bg-solid) 50%, transparent) 0%,
+    color-mix(in srgb, var(--theme-bg-solid) 75%, transparent) 60%,
+    color-mix(in srgb, var(--theme-bg-solid) 90%, transparent) 100%
+  );
+  pointer-events: none;
+}
+
+.auth-experience__header,
+.auth-experience__content {
+  position: relative;
+  z-index: 2;
+}
+
+.auth-experience__background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   3. HEADER + QUICK LOGIN
+   ========================================================================== */
+
+.auth-experience__header {
+  width: min(1180px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--theme-glass-border);
+  background: var(--theme-glass-bg);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: var(--theme-shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.auth-brand__logo {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--theme-border-strong);
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 2px 4px rgba(255, 255, 255, 0.4);
+}
+
+.auth-brand__copy {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.auth-brand__name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--theme-text);
+  white-space: nowrap;
+}
+
+.auth-brand__divider {
+  width: 1px;
+  height: 22px;
+  flex-shrink: 0;
+  background: var(--theme-border-strong);
+}
+
+.auth-brand__tagline {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--theme-accent);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .auth-brand__divider,
+  .auth-brand__tagline {
+    display: none;
+  }
+}
+
+.auth-quick-login {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-quick-login__field .react-icon {
+  position: static;
+  order: 1;
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  color: var(--theme-text-muted);
+  stroke: currentColor;
+  pointer-events: none;
+}
+
+.auth-quick-login__field:focus-within .react-icon {
+  color: var(--theme-primary);
+}
+
+.auth-quick-login__submit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 1.5rem;
+  min-height: 2.65rem;
+  border: none;
+  border-radius: 999px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary-hover));
+  color: var(--theme-on-primary);
+  -webkit-text-fill-color: var(--theme-on-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow:
+    0 6px 14px rgba(var(--theme-primary-rgb), 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25);
+}
+
+.auth-quick-login__submit::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 50%;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.auth-quick-login__submit > * {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-quick-login__submit .react-icon {
+  width: 14px;
+  height: 14px;
+  color: inherit;
+  stroke: currentColor;
+}
+
+.auth-quick-login__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+@media (max-width: 720px) {
+  .auth-quick-login {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   4. CONTENT GRID — GLASS
+   ========================================================================== */
+
+.auth-experience__content {
+  width: min(1180px, 100%);
+  display: grid;
+  grid-template-columns: 1fr 0.82fr 1.05fr;
+  align-items: stretch;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--theme-glass-border);
+  background: var(--theme-glass-bg);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: var(--theme-shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.auth-experience__content > * {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(26px, 2.8vw, 40px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--theme-primary-rgb), 0.2) transparent;
+}
+
+.auth-experience__content > *::-webkit-scrollbar {
+  width: 6px;
+}
+
+.auth-experience__content > *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.auth-experience__content > *::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgba(var(--theme-primary-rgb), 0.2);
+}
+
+.auth-experience__content > *:not(:last-child) {
+  border-right: 1px solid var(--theme-border);
+}
+
+@media (max-width: 1080px) {
+  .auth-experience {
+    justify-content: flex-start;
+  }
+  .auth-experience__content {
+    grid-template-columns: 1fr;
+  }
+  .auth-experience__content > *:not(:last-child) {
+    border-right: none;
+    border-bottom: 1px solid var(--theme-border);
+  }
+}
+
+/* ==========================================================================
+   5. GUIDELINES PANEL
+   ========================================================================== */
+
+.auth-experience__content > .auth-guidelines {
+  justify-content: flex-start;
+}
+
+.auth-section-heading {
+  margin-bottom: 20px;
+}
+
+.auth-section-heading__eyebrow {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--theme-accent);
+}
+
+.auth-section-heading h2 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 2vw, 27px);
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.auth-section-heading p {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+}
+
+.auth-guidelines__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-guideline {
+  overflow: hidden;
+  border: 1px solid var(--theme-border);
+  border-radius: var(--radius-md);
+  background: rgba(var(--theme-primary-rgb), 0.03);
+  transition: border-color 300ms ease, background-color 300ms ease;
+}
+
+.auth-guideline.is-open {
+  border-color: var(--theme-primary);
+  background: rgba(var(--theme-primary-rgb), 0.06);
+}
+
+.auth-guideline__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: none;
+  background: none;
+  color: var(--theme-text);
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.auth-guideline__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(
+    150deg,
+    rgba(var(--theme-primary-rgb), 0.25),
+    rgba(var(--theme-accent-rgb), 0.12)
+  );
+  color: var(--theme-primary);
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.06),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.05),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+.auth-guideline__icon .react-icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+.auth-guideline__label {
+  flex: 1;
+}
+
+.auth-guideline__chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--theme-text-muted);
+  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.auth-guideline.is-open .auth-guideline__chevron {
+  transform: rotate(180deg);
+  color: var(--theme-accent);
+}
+
+.auth-guideline__content {
+  padding: 0 14px 15px 58px;
+  animation: guideline-content-in 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes guideline-content-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   6. IMAGE MARQUEE
+   ========================================================================== */
+
+.auth-experience__content > .auth-marquee {
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-marquee {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.auth-marquee__viewport {
+  width: 100%;
+  max-height: 400px;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  outline: none;
+  mask-image: linear-gradient(180deg, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(180deg, transparent, black 8%, black 92%, transparent);
+}
+
+.auth-marquee__track {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: auth-marquee-scroll 22s linear infinite;
+}
+
+/* pause para sa keyboard users (hover pause tinanggal) */
+.auth-marquee__viewport:focus-within .auth-marquee__track {
+  animation-play-state: paused;
+}
+
+.auth-marquee__card {
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--theme-border);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.05),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+.auth-marquee__card img {
+  display: block;
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  filter: saturate(0.92) contrast(1.02);
+}
+
+.auth-marquee__caption {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--theme-accent);
+}
+
+@keyframes auth-marquee-scroll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+/* ==========================================================================
+   7. AUTH CARD
+   ========================================================================== */
+
+.auth-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background-color: var(--theme-surface);
+  background-image: var(--auth-card-background, none);
+  background-size: cover;
+  background-position: center;
+}
+
+.auth-experience__content > .auth-card {
+  justify-content: flex-start;
+  height: auto;
+  padding: 1.1rem 1.4rem 1.2rem;
+  scrollbar-width: thin;
+}
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--theme-surface) 72%, transparent) 0%,
+    color-mix(in srgb, var(--theme-surface) 88%, transparent) 60%,
+    color-mix(in srgb, var(--theme-surface) 95%, transparent) 100%
+  );
+  pointer-events: none;
+}
+
+.auth-card__header {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0.7rem;
+}
+
+.auth-card__eyebrow {
+  display: inline-block;
+  margin-bottom: 0.45rem;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.auth-card__title {
+  margin: 0 0 0.2rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.2vw, 1.65rem);
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.auth-card__description {
+  max-width: 40ch;
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+}
+
+.auth-card__body {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 1rem;
+}
+
+.auth-card__switch {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  margin: 0.4rem 0 0;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid var(--theme-border);
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--theme-text-muted);
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.auth-card__switch a,
+.auth-card__switch button {
+  margin-left: 0.25rem;
+  color: var(--theme-accent);
+  -webkit-text-fill-color: var(--theme-accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* ==========================================================================
+   8. FORM LAYOUT (fields, labels, hints, errors)
+   ========================================================================== */
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-field__relative {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-field label {
+  display: block;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--theme-text);
+}
+
+.auth-field__required {
+  margin-left: 2px;
+  color: var(--theme-danger, #e57575);
+  -webkit-text-fill-color: var(--theme-danger, #e57575);
+  font-size: 0.85em;
+  font-weight: 700;
+}
+
+/* label (kaliwa) + maliit na hint (kanan) — iisang row, pantay ang rhythm */
+.auth-field__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.auth-field__label-row > label {
+  flex: 0 0 auto;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.auth-field__aside {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  gap: 0.2rem;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--theme-text-muted);
+  text-transform: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.auth-field__aside strong {
+  color: var(--theme-text);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.auth-field__aside.is-success {
+  color: var(--theme-success);
+}
+
+.auth-field__aside.is-danger {
+  color: var(--theme-danger);
+}
+
+.auth-field__aside .react-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+  stroke-width: 2.8;
+}
+
+/* 2-column grid */
+.auth-field-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.auth-field-grid > * {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 540px) {
+  .auth-field-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.auth-hint,
+.auth-error {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.3;
+}
+
+.auth-hint {
+  color: var(--theme-text-muted);
+}
+
+.auth-hint strong {
+  color: var(--theme-text);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.auth-hint--success,
+.auth-hint--error {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.auth-hint--success { color: var(--theme-success); }
+.auth-hint--error   { color: var(--theme-danger); }
+
+.auth-hint--success .react-icon,
+.auth-hint--error .react-icon {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.8;
+}
+
+.auth-error {
+  color: var(--theme-danger);
+  animation: auth-error-slide 240ms ease both;
+}
+
+@keyframes auth-error-slide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.auth-form__note {
+  text-align: center;
+}
+
+/* ---- Register form tweaks ---- */
+.auth-form--register {
+  --auth-field-h: 2.6rem;
+  gap: 0.55rem;
+}
+
+/* bukas pataas ang password popover para hindi maputol sa baba ng card */
+.auth-form--register .password-popover {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+/* ==========================================================================
+   9. FORM CONTROLS — neumorphism inset (walang hover)
+   ========================================================================== */
+
+/* ---- 9.1 Field wrapper ---- */
+html body #root .auth-experience .auth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--auth-field-h);
+  padding: 0 1rem;
+  border: none !important;
+  border-radius: 0.85rem;
+  background: var(--theme-surface-2) !important;
+  box-shadow: var(--auth-inset) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  outline: none;
+  transition: box-shadow 0.2s ease;
+}
+
+html body #root .auth-experience .auth-input-wrap:focus-within {
+  box-shadow: var(--auth-inset), var(--auth-ring) !important;
+}
+
+/* error ring — ang class ay nasa <input>, kaya :has() */
+html body #root .auth-experience .auth-input-wrap.has-error,
+html body #root .auth-experience .auth-input-wrap:has(> .auth-input.has-error) {
+  box-shadow: var(--auth-inset), var(--auth-ring-danger) !important;
+}
+
+/* reserve space para sa eye toggle — may hangin sa pagitan ng text at icon */
+html body #root .auth-experience .auth-input-wrap:has(.auth-password-toggle),
+html body #root .auth-experience .auth-input-wrap--has-toggle {
+  padding-right: 3.5rem;
+}
+
+/* mas masikip sa loob ng 2-column grid */
+html body #root .auth-experience .auth-field-grid .auth-input-wrap {
+  gap: 0.5rem;
+  padding-left: 0.8rem;
+}
+
+html body #root .auth-experience .auth-field-grid .auth-input-wrap:has(.auth-password-toggle) {
+  padding-right: 2.7rem;
+}
+
+html body #root .auth-experience .auth-field-grid .auth-password-toggle {
+  right: 0.3rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+}
+
+/* leading icon */
+html body #root .auth-experience .auth-input-wrap > .react-icon {
+  position: static;
+  order: 1;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: var(--theme-text-muted);
+  stroke: currentColor;
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+html body #root .auth-experience .auth-input-wrap:focus-within > .react-icon {
+  color: var(--theme-primary);
+}
+
+/* ---- 9.2 Input (transparent, nasa wrapper ang edge) ---- */
+html body #root .auth-experience .auth-input {
+  order: 2;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--auth-field-h);
+  margin: 0;
+  padding: 0;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none;
+  outline: none !important;
+  color: var(--theme-text) !important;
+  -webkit-text-fill-color: var(--theme-text) !important;
+  caret-color: var(--theme-primary);
+  font-family: var(--font-ui);
+  font-size: 0.88rem;
+}
+
+html body #root .auth-experience .auth-input::placeholder {
+  color: var(--theme-text-muted);
+  -webkit-text-fill-color: var(--theme-text-muted);
+  opacity: 0.7;
+}
+
+html body #root .auth-experience .auth-input:disabled {
+  opacity: 0.5;
+}
+
+/* ---- 9.3 Autofill — walang lighter strip, walang glow ----
+   (Hindi gagamit ng inset box-shadow: tinatakpan nito ang neumorphism ng wrapper) */
+html body #root .auth-experience .auth-input:-webkit-autofill,
+html body #root .auth-experience .auth-quick-login__input:-webkit-autofill {
+  -webkit-text-fill-color: var(--theme-text) !important;
+  caret-color: var(--theme-primary);
+  transition: background-color 600000s 0s, color 600000s 0s !important;
+}
+
+html body #root .auth-experience .auth-input:autofill,
+html body #root .auth-experience .auth-quick-login__input:autofill {
+  -webkit-text-fill-color: var(--theme-text) !important;
+  background: transparent !important;
+  transition: background-color 600000s 0s, color 600000s 0s !important;
+}
+
+/* ---- 9.4 Select (Course / Year Level) ----
+   Native pill tinanggal; ang chevron ay galing sa wrapper ::after */
+html body #root .auth-experience select.auth-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  min-width: 0;
+  padding: 0 1.6rem 0 0 !important;
+  background: transparent none !important;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 1;
+}
+
+/* placeholder state (walang napili) */
+html body #root .auth-experience select.auth-input:required:invalid {
+  color: var(--theme-text-muted) !important;
+  -webkit-text-fill-color: var(--theme-text-muted) !important;
+  font-weight: 500;
+}
+
+html body #root .auth-experience select.auth-input option {
+  padding: 8px 12px;
+  background: var(--theme-surface-2, #382444) !important;
+  color: var(--theme-text, #f0f5ff) !important;
+  -webkit-text-fill-color: var(--theme-text, #f0f5ff) !important;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+html body #root .auth-experience select.auth-input option[value=''] {
+  color: var(--theme-text-muted) !important;
+  -webkit-text-fill-color: var(--theme-text-muted) !important;
+}
+
+html body #root .auth-experience .auth-input-wrap:has(> select)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0.95rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 2px solid var(--theme-text-muted);
+  border-bottom: 2px solid var(--theme-text-muted);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+  transition: border-color 0.2s ease;
+}
+
+html body #root .auth-experience .auth-input-wrap:has(> select):focus-within::after {
+  border-color: var(--theme-primary);
+}
+
+/* ---- 9.5 Date input ---- */
+html body #root .auth-experience input.auth-input[type='date'] {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* walang laman = muted, parang placeholder */
+html body #root .auth-experience input.auth-input[type='date']:invalid:not(:focus) {
+  color: var(--theme-text-muted) !important;
+  -webkit-text-fill-color: var(--theme-text-muted) !important;
+}
+
+html body #root .auth-experience input.auth-input[type='date']::-webkit-datetime-edit,
+html body #root .auth-experience input.auth-input[type='date']::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+  background: transparent;
+}
+
+html body #root .auth-experience input.auth-input[type='date']::-webkit-calendar-picker-indicator {
+  width: 16px;
+  height: 16px;
+  margin: 0 0 0 0.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  opacity: 0.6;
+  filter: invert(0.7);
+}
+
+[data-theme-mode='light'] input.auth-input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(0.3);
+}
+
+/* ---- 9.6 OTP (standalone input, walang wrapper) ---- */
+html body #root .auth-experience input.auth-input.auth-input--otp {
+  flex: none;
+  min-height: 3.4rem;
+  padding: 0 1.1rem !important;
+  border-radius: 999px !important;
+  background: var(--theme-surface-2) !important;
+  box-shadow: var(--auth-inset) !important;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.65em;
+  text-align: center;
+  text-indent: 0.65em;
+  transition: box-shadow 0.2s ease;
+}
+
+html body #root .auth-experience input.auth-input.auth-input--otp:focus {
+  box-shadow: var(--auth-inset), var(--auth-ring) !important;
+}
+
+html body #root .auth-experience input.auth-input.auth-input--otp.has-error {
+  box-shadow: var(--auth-inset), var(--auth-ring-danger) !important;
+}
+
+html body #root .auth-experience .auth-input--otp::placeholder {
+  font-weight: 400;
+  letter-spacing: 0.65em;
+}
+
+/* ---- 9.7 Password eye toggle — nasa LOOB ng field, flat ---- */
+html body #root .auth-experience .auth-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+html body #root .auth-experience .auth-password-toggle svg,
+html body #root .auth-experience .auth-password-toggle .react-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  color: inherit;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  transform: none;
+}
+
+/* outline lang ang eye, hindi solid blob */
+html body #root .auth-experience .auth-password-toggle svg,
+html body #root .auth-experience .auth-password-toggle svg * {
+  fill: none !important;
+}
+
+/* ---- 9.8 Quick login (header) field ---- */
+html body #root .auth-experience .auth-quick-login__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.65rem;
+  padding: 0 0.85rem;
+  border: none !important;
+  border-radius: 999px;
+  background: var(--theme-surface-2) !important;
+  box-shadow: var(--auth-inset) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: box-shadow 0.2s ease;
+}
+
+html body #root .auth-experience .auth-quick-login__field:focus-within {
+  box-shadow: var(--auth-inset), var(--auth-ring) !important;
+}
+
+html body #root .auth-experience .auth-quick-login__input {
+  order: 2;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.65rem;
+  padding: 0;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: var(--theme-text) !important;
+  -webkit-text-fill-color: var(--theme-text) !important;
+  caret-color: var(--theme-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+
+html body #root .auth-experience .auth-quick-login__input::placeholder {
+  color: var(--theme-text-muted);
+  -webkit-text-fill-color: var(--theme-text-muted);
+  opacity: 0.7;
+}
+
+/* ---- 9.9 Mobile ---- */
+@media (max-width: 768px) {
+  .auth-experience {
+    --auth-field-h: 3rem;
+  }
+  .auth-form--register {
+    --auth-field-h: 2.75rem;
+  }
+  html body #root .auth-experience .auth-input-wrap:has(.auth-password-toggle),
+  html body #root .auth-experience .auth-input-wrap--has-toggle {
+    padding-right: 3.1rem;
+  }
+  html body #root .auth-experience .auth-password-toggle {
+    right: 0.4rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+  }
+}
+
+/* ==========================================================================
+   10. BUTTONS — CLAYMORPHISM
+   ========================================================================== */
+
+.auth-submit,
+.register-modal__btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary-hover));
+  color: var(--theme-on-primary);
+  -webkit-text-fill-color: var(--theme-on-primary);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow:
+    0 8px 20px rgba(var(--theme-primary-rgb), 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.15),
+    inset 0 3px 6px rgba(255, 255, 255, 0.25);
+  transition: box-shadow 300ms ease;
+}
+
+.auth-submit {
+  min-height: 2.6rem;
+  margin-top: 0.3rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 1rem;
+  font-size: 0.88rem;
+}
+
+.register-modal__btn {
+  padding: 14px 24px;
+  border-radius: 999px;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.auth-submit::before,
+.register-modal__btn::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.auth-submit::before     { border-radius: 1rem 1rem 0 0; }
+.register-modal__btn::before { border-radius: 999px 999px 0 0; }
+
+.auth-submit > *,
+.register-modal__btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-submit .react-icon {
+  width: 17px;
+  height: 17px;
+  color: inherit;
+  stroke: currentColor;
+}
+
+.auth-submit:active:not(:disabled),
+.register-modal__btn:active {
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.1),
+    inset 0 3px 6px rgba(0, 0, 0, 0.2),
+    inset 0 -2px 4px rgba(255, 255, 255, 0.15);
+}
+
+.auth-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ==========================================================================
+   11. TEXT BUTTON / FORGOT LINK
+   ========================================================================== */
+
+.auth-text-button {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  color: var(--theme-text-muted);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.auth-text-button .react-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.auth-forgot-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0;
+}
+
+.auth-forgot-link {
+  display: block;
+  align-self: flex-end;
+  margin-top: -6px;
+  margin-bottom: 2px;
+  color: var(--theme-accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ==========================================================================
+   12. CALLOUTS / STAGE ICON / OTP META
+   ========================================================================== */
+
+.auth-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.auth-callout .react-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.auth-callout--danger {
+  background: rgba(var(--theme-danger-rgb), 0.12);
+  border-color: rgba(var(--theme-danger-rgb), 0.35);
+  color: var(--theme-danger);
+}
+
+.auth-callout--warning {
+  background: rgba(var(--theme-warning-rgb), 0.12);
+  border-color: rgba(var(--theme-warning-rgb), 0.35);
+  color: var(--theme-warning);
+}
+
+.auth-stage-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 6px;
+  border-radius: 50%;
+  background: linear-gradient(
+    150deg,
+    rgba(var(--theme-primary-rgb), 0.25),
+    rgba(var(--theme-accent-rgb), 0.12)
+  );
+  color: var(--theme-primary);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.08),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.06),
+    inset 0 3px 6px rgba(255, 255, 255, 0.35);
+  animation: auth-stage-pulse 0.6s ease-out;
+}
+
+.auth-stage-icon .react-icon {
+  width: 26px;
+  height: 26px;
+}
+
+@keyframes auth-stage-pulse {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.auth-otp-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--theme-text-muted);
+}
+
+.auth-otp-meta .is-danger {
+  color: var(--theme-danger);
+  font-weight: 600;
+}
+
+.auth-otp-meta button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  color: var(--theme-accent);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-otp-meta button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.auth-otp-meta .react-icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* ==========================================================================
+   13. SUCCESS STAGE
+   ========================================================================== */
+
+.auth-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 30px 0;
+  text-align: center;
+  animation: auth-stage-fade-in 0.32s ease-out;
+}
+
+.auth-success__icon {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 6px;
+  color: var(--theme-success);
+}
+
+.auth-success p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.auth-success span {
+  font-size: 13px;
+  color: var(--theme-text-muted);
+}
+
+@keyframes auth-stage-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   14. PASSWORD RULES PANEL (inline, ginagamit sa login) — neumorphism inset
+   ========================================================================== */
+
+.auth-password-rules {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+  padding: 0.75rem 0.9rem;
+  list-style: none;
+  border: none;
+  border-radius: 0.85rem;
+  background: var(--theme-surface-2);
+  box-shadow: var(--auth-inset-soft);
+}
+
+.auth-password-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.auth-password-rule .react-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  stroke-width: 2.5;
+}
+
+.auth-password-rule.is-pending { color: var(--theme-text-muted); }
+.auth-password-rule.is-pending .react-icon { color: var(--theme-danger); }
+.auth-password-rule.is-passed,
+.auth-password-rule.is-passed .react-icon { color: var(--theme-success); }
+
+/* ==========================================================================
+   15. FIELD STATUS ICON / COUNTER
+   ========================================================================== */
+
+.auth-input__status {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.auth-input__status .react-icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 3;
+}
+
+.auth-input__status.is-valid {
+  color: var(--theme-success);
+  animation: auth-status-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.auth-input__status.is-invalid {
+  color: var(--theme-danger);
+}
+
+@keyframes auth-status-pop {
+  from { transform: translateY(-50%) scale(0.5); opacity: 0; }
+  to   { transform: translateY(-50%) scale(1);   opacity: 1; }
+}
+
+.auth-hint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.auth-hint--counter {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--theme-text-muted);
+  transition: color 0.2s ease;
+}
+
+.auth-hint--counter.is-complete {
+  color: var(--theme-success);
+}
+
+/* ==========================================================================
+   16. REGISTRATION REQUIREMENTS PANEL
+   ========================================================================== */
+
+.auth-requirement-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-requirement {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--theme-border);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--theme-primary-rgb), 0.04);
+}
+
+.auth-requirement__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: rgba(var(--theme-primary-rgb), 0.12);
+  color: var(--theme-primary);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.05),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.05),
+    inset 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.auth-requirement__icon .react-icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.2;
+}
+
+.auth-requirement__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.auth-requirement__title {
+  margin: 0 0 3px;
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.auth-requirement__desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+}
+
+.auth-requirement__desc strong {
+  color: var(--theme-text);
+  font-weight: 700;
+}
+
+.auth-requirement__desc code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(var(--theme-primary-rgb), 0.1);
+  color: var(--theme-primary);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.auth-requirement__check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--theme-success);
+  stroke-width: 2.5;
+}
+
+.auth-requirements-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--theme-accent-rgb), 0.25);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--theme-accent-rgb), 0.08);
+  color: var(--theme-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.auth-requirements-note strong {
+  color: var(--theme-accent);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   17. REGISTER MODAL — GLASS
+   ========================================================================== */
+
+.register-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  animation: registerModalFadeIn 0.25s ease-out;
+}
+
+@keyframes registerModalFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.register-modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 28px 24px 24px;
+  border: 1px solid var(--theme-glass-border);
+  border-radius: 24px;
+  background: var(--theme-glass-bg);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 24px 64px rgba(0, 0, 0, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.25);
+  animation: registerModalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes registerModalPop {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.register-modal__header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.register-modal__eyebrow {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--theme-accent);
+}
+
+.register-modal__title {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--theme-text);
+}
+
+.register-modal__desc {
+  max-width: 340px;
+  margin: 0 auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+}
+
+.register-modal__list {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.register-modal__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  background: rgba(var(--theme-primary-rgb), 0.05);
+}
+
+.register-modal__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(var(--theme-primary-rgb), 0.15);
+  color: var(--theme-primary);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.06),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.05),
+    inset 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.register-modal__icon .react-icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.2;
+}
+
+.register-modal__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.register-modal__label {
+  margin: 0 0 2px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.register-modal__hint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--theme-text-muted);
+}
+
+.register-modal__hint strong {
+  color: var(--theme-text);
+  font-weight: 700;
+}
+
+.register-modal__hint code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(var(--theme-primary-rgb), 0.12);
+  color: var(--theme-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.register-modal__check {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--theme-success);
+  stroke-width: 2.5;
+}
+
+.register-modal__note {
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--theme-accent-rgb), 0.25);
+  border-radius: 10px;
+  background: rgba(var(--theme-accent-rgb), 0.1);
+  color: var(--theme-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.register-modal__note strong {
+  color: var(--theme-accent);
+  font-weight: 700;
+}
+
+.register-modal__footer {
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .register-modal {
+    padding: 24px 20px 20px;
+    border-radius: 20px;
+  }
+  .register-modal__title {
+    font-size: 20px;
+  }
+  .register-modal__list {
+    gap: 6px;
+  }
+  .register-modal__item {
+    padding: 10px 12px;
+  }
+  .register-modal__icon {
+    width: 32px;
+    height: 32px;
+  }
+  .register-modal__icon .react-icon {
+    width: 16px;
+    height: 16px;
+  }
+  .register-modal__check {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* ==========================================================================
+   18. PASSWORD POPOVER — GLASS
+   ========================================================================== */
+
+.password-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  max-width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--theme-glass-border);
+  border-radius: 12px;
+  background: var(--theme-glass-bg);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 12px 32px rgba(0, 0, 0, 0.25),
+    0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  animation: passwordPopoverIn 0.2s ease-out;
+}
+
+@keyframes passwordPopoverIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.password-popover.is-all-passed {
+  border-color: rgba(var(--theme-success-rgb), 0.4);
+  background: color-mix(in srgb, var(--theme-success) 12%, var(--theme-glass-bg));
+}
+
+.password-popover__header {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--theme-border);
+}
+
+.password-popover__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+}
+
+.password-popover.is-all-passed .password-popover__title {
+  color: var(--theme-success);
+}
+
+.password-popover__list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.password-popover__rule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  transition: color 300ms ease;
+}
+
+.password-popover__rule .react-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  stroke-width: 2.8;
+}
+
+.password-popover__rule.is-pending { color: var(--theme-text-muted); }
+.password-popover__rule.is-pending .react-icon { color: var(--theme-danger); }
+
+.password-popover__rule.is-passed {
+  color: var(--theme-success);
+  font-weight: 600;
+}
+
+.password-popover__rule.is-passed .react-icon {
+  color: var(--theme-success);
+}
+
+@media (max-width: 480px) {
+  .password-popover {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+  .password-popover__rule {
+    font-size: 11px;
+  }
+}
+
+/* ==========================================================================
+   19. MISC / ACCESSIBILITY / REDUCED MOTION
+   ========================================================================== */
+
+.auth-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.auth-experience :focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-marquee__track {
+    animation: none;
+  }
+
+  .auth-input,
+  .auth-input-wrap,
+  .auth-quick-login__input,
+  .auth-quick-login__field,
+  .auth-submit,
+  .register-modal__btn,
+  .auth-guideline,
+  .auth-guideline__chevron,
+  .password-popover {
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+  }
+}
+/* ============================================================
+   🎯 CUSTOM ZOOM: LOGIN (ZOOM IN) AT REGISTER (ZOOM OUT)
+   ============================================================ */
+
+/* 1. LOGIN PAGE (Zoom In) */
+/* Tinitiyak nating may .auth-experience class, tapos may login mode sa loob */
+.auth-experience:has(.auth-card--login),
+body:has(.auth-card[data-mode="login"]) .auth-experience {
+  zoom: 0.90 !important;
+}
+
+/* 2. REGISTER PAGE (Zoom Out) */
+/* Tinitiyak nating may .auth-experience class, tapos may register mode sa loob */
+.auth-experience:has(.auth-card--register),
+body:has(.auth-card[data-mode="register"]) .auth-experience {
+  zoom: 0.81 !important;
+}
+
+/* ============================================================
+   FALLBACK PARA SA MGA BROWSER NA WALANG ZOOM (Firefox)
+   ============================================================ */
+@supports not (zoom: 1) {
+  .auth-experience:has(.auth-card--login),
+  body:has(.auth-card[data-mode="login"]) .auth-experience {
+    transform: scale(1.05) !important;
+    transform-origin: top center !important;
+    width: 95.23% !important;
+    margin: 0 auto !important;
+  }
+
+  .auth-experience:has(.auth-card--register),
+  body:has(.auth-card[data-mode="register"]) .auth-experience {
+    transform: scale(0.9) !important;
+    transform-origin: top center !important;
+    width: 111.11% !important;
+    margin-left: -5.55% !important;
+  }
+}

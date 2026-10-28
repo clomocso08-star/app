@@ -1,0 +1,25 @@
+/* ============================================================
+   SJCM ORGANIZATION — FOOTER STYLES
+   ============================================================ */
+
+.org-shell .ftr { margin-top: 28px !important; padding: 28px !important; border-radius: 22px !important; border: 1px solid var(--bd) !important; background: rgba(var(--w), .04) !important; flex-shrink: 0 !important; margin-bottom: 24px !important; }
+.org-shell .ft-grid { display: grid !important; grid-template-columns: 1.5fr 1fr 1fr 1.3fr !important; gap: 28px !important; }
+.org-shell .ft-id { display: flex !important; align-items: center !important; gap: 12px !important; margin-bottom: 12px !important; }
+.org-shell .ft-logo { width: 42px !important; height: 42px !important; border-radius: 12px !important; display: grid !important; place-items: center !important; background: linear-gradient(135deg, var(--a), var(--a2)) !important; color: var(--on) !important; }
+.org-shell .ft-brand b { color: var(--tx) !important; font-size: 15px !important; }
+.org-shell .ft-brand small { color: var(--mu) !important; font-size: 12px !important; }
+.org-shell .ft-brand p { color: var(--sub) !important; font-size: 13px !important; margin-top: 8px !important; }
+.org-shell .ft-pills { display: flex !important; flex-direction: row !important; gap: 12px !important; margin-top: 12px !important; }
+.org-shell .ft-pills span { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 5px 12px !important; border-radius: 99px !important; background: rgba(var(--w), .06) !important; border: 1px solid var(--bd) !important; font-size: 12px !important; font-weight: 600 !important; color: var(--tx) !important; white-space: nowrap !important; }
+.org-shell .ftr i { width: 16px !important; height: 16px !important; margin-right: 6px !important; vertical-align: middle !important; display: inline-block !important; }
+.org-shell .ft-col { display: flex !important; flex-direction: column !important; gap: 9px !important; }
+.org-shell .ft-col h4 { font-size: 13px !important; text-transform: uppercase !important; letter-spacing: .08em !important; color: var(--mu) !important; margin-bottom: 4px !important; }
+.org-shell .ft-col a { color: var(--sub) !important; font-size: 13px !important; }
+.org-shell .ft-col a:hover { color: var(--al) !important; }
+.org-shell .ft-row { display: flex !important; gap: 10px !important; align-items: flex-start !important; color: var(--sub) !important; font-size: 13px !important; margin-bottom: 10px !important; }
+.org-shell .ft-row span { color: var(--al) !important; margin-top: 2px !important; }
+.org-shell .ft-bar { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 16px !important; margin-top: 24px !important; padding-top: 18px !important; border-top: 1px solid var(--bd) !important; color: var(--mu) !important; font-size: 12px !important; }
+.org-shell .ft-links { display: flex !important; gap: 20px !important; flex-wrap: wrap !important; }
+.org-shell .ft-links a { color: var(--mu) !important; font-size: 12px !important; white-space: nowrap !important; }
+.org-shell .ft-links a:hover { color: var(--al) !important; }
+.org-shell .ft-top i { width: 20px !important; height: 20px !important; margin: 0 !important; }

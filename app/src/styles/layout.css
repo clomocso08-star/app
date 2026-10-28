@@ -1,0 +1,602 @@
+/* ============================================================
+   LAYOUT — page shell, headers, buttons, panels, footer
+   ============================================================ */
+
+/* ✅ CRITICAL — reset html/body/#root, walang min-height */
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+
+/* ============================================================
+   SITE LAYOUT — para sa SiteLayout.tsx wrapper
+   ✅ Walang gap — natural height lang ang main
+============================================================ */
+
+.site-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.site-layout > main {
+  /* ✅ Hindi nag-e-expand — natural height lang */
+  flex: 0 1 auto;
+}
+
+.site-layout > .site-footer {
+  /* ✅ Footer naka-pin sa pinakababa */
+  margin-top: auto;
+}
+
+/* ============================================================
+   PAGE SHELL
+============================================================ */
+
+.page-shell {
+  width: min(100% - 2.5rem, 78rem);
+  margin: 0 auto;
+  padding: 3rem 0 4.5rem;
+}
+
+.page-shell--narrow {
+  width: min(100% - 2.5rem, 64rem);
+}
+
+.page-shell--receiporderst {
+  width: min(100% - 2.5rem, 52rem);
+}
+
+.page-shell--dashboard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.page-shell--dashboard > .stats-grid {
+  margin: 0;
+}
+
+.page-shell--dashboard::before,
+.page-shell--dashboard::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(70px);
+}
+
+.page-shell--dashboard::before {
+  top: -10rem;
+  right: -10rem;
+  width: 34rem;
+  height: 34rem;
+  background: radial-gradient(circle, var(--glow-brand), transparent 72%);
+}
+
+.page-shell--dashboard::after {
+  bottom: -12rem;
+  left: -8rem;
+  width: 32rem;
+  height: 32rem;
+  background: radial-gradient(circle, var(--glow-info), transparent 72%);
+}
+
+/* ============================================================
+   PAGE HEADER
+============================================================ */
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: 2rem;
+}
+
+.page-header__copy {
+  max-width: 48rem;
+}
+
+.page-title,
+.section-title {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.page-title {
+  font-size: clamp(1.85rem, 4vw, 3rem);
+  line-height: 1.08;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.page-description,
+.section-description {
+  margin: 0.45rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
+.section-kicker,
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.7rem;
+  color: var(--color-brand);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.section-kicker::before,
+.eyebrow::before {
+  width: 1.2rem;
+  height: 1px;
+  background: currentColor;
+  content: '';
+}
+
+/* ============================================================
+   PANELS & CARDS
+============================================================ */
+
+.panel,
+.glass-card {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.panel--raised {
+  background: var(--color-surface-raised);
+}
+
+.glass-card-hover {
+  transition: border-color 200ms var(--ease-standard),
+    background 200ms var(--ease-standard),
+    box-shadow 200ms var(--ease-standard),
+    transform 200ms var(--ease-standard);
+}
+
+.glass-card-hover:hover {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-3px);
+}
+
+/* ============================================================
+   GLASS NAV
+============================================================ */
+
+.glass-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid var(--color-line);
+  background: rgba(255, 252, 244, 0.92);
+  backdrop-filter: blur(16px);
+}
+
+/* ============================================================
+   BUTTONS
+============================================================ */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.7rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: border-color 180ms var(--ease-standard),
+    background 180ms var(--ease-standard),
+    color 180ms var(--ease-standard),
+    transform 180ms var(--ease-standard),
+    opacity 180ms var(--ease-standard);
+}
+
+.button--primary {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+  color: #2a1c0c;
+}
+
+.button--primary:hover,
+.button--primary:focus-visible {
+  border-color: #c99a49;
+  background: #c99a49;
+}
+
+.button--secondary {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.button--secondary:hover,
+.button--secondary:focus-visible {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.button--quiet {
+  border-color: var(--color-line);
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.button--quiet:hover,
+.button--quiet:focus-visible {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.button--danger {
+  border-color: rgba(156, 55, 55, 0.35);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.button--block {
+  width: 100%;
+}
+
+.button:disabled,
+.button[aria-disabled='true'] {
+  border-color: var(--color-line);
+  background: var(--color-surface-soft);
+  color: var(--color-text-subtle);
+  opacity: 0.68;
+}
+
+/* ============================================================
+   ICON BUTTON
+============================================================ */
+
+.icon-button {
+  display: inline-grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  transition: border-color 180ms var(--ease-standard),
+    background 180ms var(--ease-standard),
+    color 180ms var(--ease-standard),
+    transform 180ms var(--ease-standard);
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+
+/* ============================================================
+   TEXT LINK
+============================================================ */
+
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-brand);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.text-link:hover {
+  color: var(--color-brand-strong);
+}
+
+.button--pill {
+  border-radius: 999px;
+}
+
+/* ============================================================
+   SITE FOOTER — fallback (kung walang footer.css override)
+   ✅ Ang footer.css mo ang may full styling, ito lang backup
+============================================================ */
+
+.site-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-text-subtle);
+  font-size: 0.72rem;
+}
+
+.site-footer__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: min(100% - 2.5rem, 78rem);
+  min-height: 4.5rem;
+  margin: 0 auto;
+}
+
+.site-footer__links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.site-footer a:hover {
+  color: var(--color-text);
+}
+
+/* ============================================================
+   ✅ EXPANDABLE NAV — base sa DevFlash reference
+   Compact horizontal pill na nag-e-expand on hover
+   Ito ang sumasalo sa lumang sidebar push rules
+============================================================ */
+
+.expandable-nav {
+  position: sticky;
+  top: 4.5rem;                          /* nasa ilalim ng topbar */
+  z-index: 30;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin: 1.25rem auto;
+  padding: 0.5rem;
+
+  width: fit-content;
+  max-width: calc(100% - 2rem);
+
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 1.25rem;
+
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(0, 0, 0, 0.08);
+
+  transition: box-shadow 0.3s ease, background 0.3s ease;
+}
+
+.expandable-nav:hover {
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.06),
+    0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+.expandable-nav__inner {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* --- Individual link (compact pill) --- */
+.expandable-nav__link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+
+  height: 3rem;
+  padding: 0 0.85rem;
+  min-width: 3rem;
+
+  border-radius: 1rem;
+  color: #6b7280;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.88rem;
+  white-space: nowrap;
+
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.expandable-nav__icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.expandable-nav__icon-wrap .react-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  color: currentColor;
+  transition: color 0.2s ease;
+}
+
+/* Label — hidden by default */
+.expandable-nav__label {
+  display: inline-block;
+  margin-left: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  transition:
+    max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s ease 0.08s;
+}
+
+/* --- Hover / active --- */
+.expandable-nav__link:hover {
+  background: rgba(107, 114, 128, 0.1);
+  color: #111827;
+}
+
+.expandable-nav__link:hover .react-icon {
+  color: #111827;
+}
+
+.expandable-nav__link.is-active {
+  background: linear-gradient(135deg, #c7d2fe 0%, #e0e7ff 100%);
+  color: #4338ca;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.18);
+}
+
+.expandable-nav__link.is-active .react-icon {
+  color: #4338ca;
+}
+
+/* --- ✅ EXPANDED STATE — hover yung container --- */
+.expandable-nav:hover .expandable-nav__label,
+.expandable-nav:focus-within .expandable-nav__label {
+  max-width: 200px;
+  margin-left: 0.6rem;
+  opacity: 1;
+}
+
+.expandable-nav:hover .expandable-nav__link,
+.expandable-nav:focus-within .expandable-nav__link {
+  padding-right: 1rem;
+}
+
+/* --- Mobile: horizontal scroll, walang expand --- */
+@media (max-width: 768px) {
+  .expandable-nav {
+    max-width: calc(100% - 2rem);
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 1rem auto;
+  }
+
+  .expandable-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .expandable-nav__link {
+    height: 2.75rem;
+    padding: 0 0.75rem;
+    min-width: 2.75rem;
+  }
+
+  .expandable-nav:hover .expandable-nav__label,
+  .expandable-nav:focus-within .expandable-nav__label {
+    max-width: 0;
+    margin-left: 0;
+    opacity: 0;
+  }
+}
+
+/* --- Reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+  .expandable-nav * {
+    transition: none !important;
+  }
+}
+
+/* ============================================================
+   ✅ APP SHELL — para sa SidebarLayout.tsx (kung ginagamit mo)
+   Walang sidebar push — nav ay sticky floating pill
+============================================================ */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-height: 0;
+}
+
+.app-content {
+  flex: 1 0 auto;
+  min-height: 0;
+}
+/* ============================================================
+   FIX: STUDENT SIDE SCROLL (WALANG EPEKTO SA ORG SIDE)
+   ============================================================ */
+
+/* I-unlock ang scroll ng body at html para sa buong app */
+html, body {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-y: auto !important; /* Ibalik ang scroll */
+  overflow-x: hidden !important;
+}
+
+/* 
+  Org Shell: Ibabalik natin ang scrollable na org-main (para sa sticky topbar)
+  PERO titiyakin nating hindi ito makakaapekto sa student side.
+*/
+.org-shell {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
+.org-shell .org-main {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
+/* 
+  Kung ang student side mo ay gumagamit ng class na `.org-shell` 
+  (para magamit ang parehong theme), kailangan nating i-override ito 
+  para hindi mag-lock ang scroll.
+*/
+.org-shell:not(:has(.sidebar)):not(:has(.floating-sidebar)) {
+  display: block !important;
+  overflow: visible !important;
+}
+
+.org-shell:not(:has(.sidebar)):not(:has(.floating-sidebar)) .org-main {
+  margin-left: 0 !important;
+  height: auto !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+/* Siguraduhing ang topbar sa student side ay sticky at hindi fixed */
+.org-shell:not(:has(.sidebar)):not(:has(.floating-sidebar)) .top.org-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+}
+
+/* ✅ Alisin ang luma — wala nang sidebar push rules */
+/* (Yung `body:has(.profile-sidebar.is-open) ...` etc. — tinanggal) */
