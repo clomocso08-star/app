@@ -1,0 +1,2925 @@
+/* ============================================================
+   SJCM ORGANIZATION — LAYOUT, TOKENS, SIDEBAR, TOPBAR
+   ============================================================ */
+
+/* ✅ 1. TOKENS */
+.org-shell, .org-login-wrapper {
+  --bg: #050a16;
+  --s: #0e1730;
+  --tx: #eaf0ff;
+  --mu: #8e9bb8;
+  --sub: #b0bed6;
+  --w: 255, 255, 255;
+  --bd: rgba(var(--w), .1);
+  --a: #3b7bff;
+  --a2: #2a56d6;
+  --al: #6aa1ff;
+  --on: #fff;
+  --hl: rgba(255, 255, 255, .07);
+  --ds: rgba(0, 0, 0, .55);
+
+  /* Shared design tokens (new, additive) */
+  --ease: cubic-bezier(.4, 0, .2, 1);
+  --spring: cubic-bezier(.34, 1.56, .64, 1);
+  --r-card: 22px;
+  --glass-bg: linear-gradient(145deg, rgba(var(--w), .075), rgba(var(--w), .02));
+  --glass-bd: rgba(var(--w), .12);
+  --glass-shadow: 0 12px 40px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(var(--w), .1);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--a) 35%, transparent);
+
+  color-scheme: dark;
+  font: 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif;
+  color: var(--tx);
+  min-height: 100vh;
+  background:
+    radial-gradient(900px 520px at 72% -8%, color-mix(in srgb, var(--a) 28%, transparent), transparent),
+    radial-gradient(700px 500px at 0% 100%, color-mix(in srgb, var(--a2) 28%, transparent), transparent),
+    var(--bg);
+  transition: background .3s ease, color .3s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ✅ 2. 10 COLOR THEMES */
+.org-shell[data-theme="midnight"] { --bg: #050a16; --s: #0e1730; --tx: #eaf0ff; --mu: #8e9bb8; --w: 255, 255, 255; --a: #3b7bff; --a2: #2a56d6; --al: #6aa1ff; color-scheme: dark; }
+.org-shell[data-theme="plum"]     { --bg: #150c1c; --s: #26142f; --tx: #f5ecfa; --mu: #a58bb5; --w: 255, 255, 255; --a: #b05cd6; --a2: #6b2a8f; --al: #d49bf0; color-scheme: dark; }
+.org-shell[data-theme="forest"]   { --bg: #06130e; --s: #0f2a1f; --tx: #e8f5ee; --mu: #84a898; --w: 255, 255, 255; --a: #2fb57a; --a2: #176a47; --al: #5fe0a4; color-scheme: dark; }
+.org-shell[data-theme="matte"]    { --bg: #0b0b0c; --s: #1a1a1c; --tx: #f5f5f5; --mu: #8a8a90; --w: 255, 255, 255; --a: #e6e6e6; --a2: #8d8d93; --al: #fff; --on: #0b0b0c; color-scheme: dark; }
+.org-shell[data-theme="charcoal"] { --bg: #1b1b1d; --s: #29292c; --tx: #efeff1; --mu: #9a9aa2; --w: 255, 255, 255; --a: #8b9bb8; --a2: #5a6a88; --al: #b6c3dc; --on: #111; color-scheme: dark; }
+
+.org-shell[data-theme="cream"]    { --bg: #f6edd6; --s: #f6edd6; --tx: #2b2113; --mu: #7a6a4f; --w: 90, 60, 10; --a: #a67510; --a2: #7a540a; --al: #8a5f0a; --on: #fff; --hl: rgba(255,255,255,.95); --ds: rgba(90,60,10,.22); color-scheme: light; }
+.org-shell[data-theme="white"]    { --bg: #eef0f4; --s: #eef0f4; --tx: #14161c; --mu: #6b7280; --w: 30, 36, 60; --a: #2b2f3a; --a2: #0f1117; --al: #1d2230; --on: #fff; --hl: rgba(255,255,255,.95); --ds: rgba(30,36,60,.22); color-scheme: light; }
+.org-shell[data-theme="beige"]    { --bg: #f1e7d3; --s: #f1e7d3; --tx: #3a2b1a; --mu: #86745a; --w: 100, 70, 30; --a: #b4783a; --a2: #8a5524; --al: #8f5a22; --on: #fff; --hl: rgba(255,255,255,.95); --ds: rgba(100,70,30,.22); color-scheme: light; }
+.org-shell[data-theme="gray"]     { --bg: #e9ebf0; --s: #e9ebf0; --tx: #1c2230; --mu: #6b7280; --w: 40, 50, 80; --a: #5b6b8c; --a2: #3d4a68; --al: #3d4a68; --on: #fff; --hl: rgba(255,255,255,.95); --ds: rgba(40,50,80,.22); color-scheme: light; }
+.org-shell[data-theme="blush"]    { --bg: #fbe9ee; --s: #fbe9ee; --tx: #3a1e29; --mu: #8a6572; --w: 120, 40, 70; --a: #d6567e; --a2: #a63559; --al: #b23a62; --on: #fff; --hl: rgba(255,255,255,.95); --ds: rgba(120,40,70,.22); color-scheme: light; }
+
+.org-shell[data-mode="light"] {
+  background: radial-gradient(900px 520px at 72% -8%, color-mix(in srgb, var(--a) 14%, transparent), transparent), var(--bg) !important;
+}
+
+/* ✅ 3. GLOBAL RESET */
+.org-shell *, .org-login-wrapper * { box-sizing: border-box; margin: 0; padding: 0; }
+.org-shell a, .org-login-wrapper a { color: inherit; text-decoration: none; cursor: pointer; }
+.org-shell button, .org-login-wrapper button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+.org-shell small, .org-login-wrapper small { display: block; color: var(--mu); font-size: 12px; }
+.org-shell i, .org-login-wrapper i { display: inline-grid !important; place-items: center !important; width: 20px !important; height: 20px !important; flex: none !important; }
+.org-shell i svg, .org-login-wrapper i svg { width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; }
+
+.org-shell :focus-visible { outline: 2px solid var(--al); outline-offset: 2px; }
+.org-shell ::selection { background: color-mix(in srgb, var(--a) 40%, transparent); color: var(--tx); }
+
+/* Slim, themed scrollbars */
+.org-shell * { scrollbar-width: thin; scrollbar-color: rgba(var(--w), .2) transparent; }
+.org-shell *::-webkit-scrollbar { width: 8px; height: 8px; }
+.org-shell *::-webkit-scrollbar-thumb { background: rgba(var(--w), .18); border-radius: 99px; }
+.org-shell *::-webkit-scrollbar-thumb:hover { background: rgba(var(--w), .3); }
+
+/* ✅ 4. GLASS EFFECT */
+.org-shell .glass, .org-login-wrapper .panel {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--bd) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(140%) !important;
+  backdrop-filter: blur(22px) saturate(140%) !important;
+  border-radius: var(--r-card) !important;
+  box-shadow: var(--glass-shadow) !important;
+  color: var(--tx) !important;
+}
+.org-shell[data-mode="light"] .glass {
+  background: linear-gradient(145deg, rgba(255, 255, 255, .82), rgba(255, 255, 255, .48)) !important;
+  box-shadow: 0 10px 30px rgba(var(--w), .14), inset 0 1px 0 #fff !important;
+}
+
+/* ✅ 5. MAIN LAYOUT */
+.org-shell { display: flex !important; width: 100% !important; }
+
+.org-shell .org-main {
+  position: relative !important;
+  z-index: 10 !important;
+  margin-left: 124px !important;
+  padding: 16px 20px 28px 0 !important;
+  transition: margin-left .4s var(--spring) !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+.org-shell .sidebar:hover ~ .org-main { margin-left: 296px !important; }
+.org-shell .floating-sidebar:hover ~ .org-main { margin-left: 300px !important; }
+
+/* ✅ 6. SIDEBAR (classic) */
+.org-shell .sidebar {
+  position: fixed !important; inset: 16px auto 16px 16px !important;
+  width: 72px !important; padding: 12px !important;
+  display: flex !important; flex-direction: column !important; gap: 6px !important;
+  overflow: hidden !important; z-index: 20 !important;
+  transition: width .35s var(--ease), box-shadow .35s, background .35s !important;
+}
+.org-shell .sidebar:hover {
+  width: 264px !important;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--bg) 72%, var(--a)), var(--bg)) !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.65), inset 0 1px 0 rgba(var(--w),.1) !important;
+}
+
+.org-shell .sidebar .t { opacity: 0 !important; white-space: nowrap !important; transition: opacity .15s !important; }
+.org-shell .sidebar:hover .t, .org-shell .sidebar:hover .brand b, .org-shell .sidebar:hover .nav span { opacity: 1 !important; transition: opacity .25s .12s !important; }
+
+.org-shell .sidebar .brand { display: flex !important; align-items: center !important; gap: 12px !important; padding: 6px 7px 20px !important; font-size: 19px !important; font-weight: 800 !important; letter-spacing: -.01em !important; border-bottom: 1px solid var(--bd) !important; margin-bottom: 12px !important; }
+.org-shell .sidebar .logo { width: 34px !important; height: 34px !important; flex: none !important; clip-path: polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%) !important; background: linear-gradient(135deg,var(--al),var(--a) 55%,var(--a2)) !important; object-fit: cover !important; }
+
+.org-shell .sidebar .nav { display: flex !important; align-items: center !important; gap: 14px !important; height: 46px !important; padding: 0 13px !important; border-radius: 14px !important; color: var(--sub) !important; white-space: nowrap !important; transition: background .2s, color .2s !important; background: transparent !important; }
+.org-shell .sidebar .nav:hover { background: rgba(var(--w),.07) !important; color: var(--tx) !important; }
+.org-shell .sidebar .nav.on { background: linear-gradient(90deg,var(--a2),var(--a) 60%,var(--a2)) !important; color: var(--on) !important; box-shadow: 0 6px 22px color-mix(in srgb,var(--a2) 33%,transparent) !important; }
+.org-shell .sidebar .nav.on svg { stroke: var(--on) !important; }
+.org-shell .sidebar .nav i, .org-shell .sidebar .nav span.icon { width: 22px !important; height: 22px !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; }
+.org-shell .sidebar .nav svg, .org-shell .sidebar .brand svg, .org-shell .sidebar .foot svg, .org-shell .top svg { width: 22px !important; height: 22px !important; min-width: 22px !important; min-height: 22px !important; stroke: currentColor !important; stroke-width: 1.8 !important; fill: none !important; display: block !important; }
+
+.org-shell .sidebar .foot { margin-top: auto !important; display: flex !important; flex-direction: column !important; gap: 10px !important; opacity: 0 !important; transition: opacity .15s !important; width: 100% !important; padding-top: 10px !important; }
+.org-shell .sidebar:hover .foot { opacity: 1 !important; transition: opacity .25s .12s !important; }
+
+.org-shell .sidebar .tag, .org-shell .sidebar .me { display: flex !important; align-items: center !important; gap: 12px !important; padding: 8px !important; border-radius: 16px !important; background: rgba(var(--w),.05) !important; border: 1px solid var(--bd) !important; width: 100% !important; white-space: nowrap !important; overflow: hidden !important; }
+.org-shell .sidebar .tag b, .org-shell .sidebar .me b { display: block !important; font-size: 13px !important; font-weight: 700 !important; color: var(--tx) !important; margin: 0 !important; line-height: 1.2 !important; }
+.org-shell .sidebar .tag small, .org-shell .sidebar .me small { font-size: 11px !important; color: var(--mu) !important; margin: 0 !important; line-height: 1.2 !important; }
+.org-shell .sidebar .av { width: 32px !important; height: 32px !important; flex: none !important; border-radius: 50% !important; display: grid !important; place-items: center !important; font-size: 12px !important; font-weight: 700 !important; background: linear-gradient(135deg,var(--a),var(--a2)) !important; color: #fff !important; }
+.org-shell .sidebar .tag .ic, .org-shell .sidebar .me .av { width: 32px !important; height: 32px !important; min-width: 32px !important; min-height: 32px !important; border-radius: 10px !important; display: grid !important; place-items: center !important; flex-shrink: 0 !important; }
+.org-shell .sidebar .me .av { border-radius: 50% !important; }
+
+.org-shell .sidebar .tag .t, .org-shell .sidebar .me .t { display: flex !important; flex-direction: column !important; opacity: 0 !important; visibility: hidden !important; transition: opacity .15s !important; }
+.org-shell .sidebar:hover .tag .t, .org-shell .sidebar:hover .me .t { opacity: 1 !important; visibility: visible !important; transition: opacity .25s .12s !important; }
+
+/* ✅ 7. TOPBAR (base) */
+.org-shell .top { display: flex !important; align-items: center !important; gap: 16px !important; margin-bottom: 20px !important; position: relative !important; z-index: 10 !important; }
+.org-shell .search { flex: 1 !important; display: flex !important; align-items: center !important; gap: 10px !important; height: 50px !important; padding: 0 16px !important; border-radius: 999px !important; color: var(--mu) !important; }
+.org-shell .search input { flex: 1 !important; min-width: 0 !important; background: none !important; border: 0 !important; outline: 0 !important; color: var(--tx) !important; }
+.org-shell .search input::placeholder { color: var(--mu) !important; }
+.org-shell kbd { font: 600 12px inherit !important; padding: 3px 9px !important; border-radius: 8px !important; background: rgba(var(--w),.08) !important; border: 1px solid rgba(var(--w), .08) !important; }
+.org-shell .bell { position: relative !important; width: 50px !important; height: 50px !important; border-radius: 50% !important; display: grid !important; place-items: center !important; cursor: pointer !important; }
+.org-shell .bell em { position: absolute !important; top: 5px !important; right: 5px !important; min-width: 18px !important; height: 18px !important; padding: 0 5px !important; border-radius: 99px !important; background: #ff5d73 !important; color: #fff !important; font: 700 10px/18px inherit !important; font-style: normal !important; text-align: center !important; }
+.org-shell .user { display: flex !important; align-items: center !important; gap: 10px !important; padding: 8px 14px 8px 8px !important; border-radius: 999px !important; }
+.org-shell .user b { display: block !important; font-size: 13px !important; line-height: 1.2 !important; }
+.org-shell .user small { color: var(--mu) !important; font-size: 11px !important; }
+
+/* ✅ 8. PAGE CONTAINERS */
+.org-shell .page-dashboard, .org-shell .page-products, .org-shell .page-orders, .org-shell .page-order-details, .org-shell .page-notifications, .org-shell .page-profile, .org-shell .page-settings { display: grid !important; gap: 20px !important; align-content: start !important; }
+.org-shell .ph { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 16px !important; margin-bottom: 20px !important; }
+.org-shell .ph h2 { font-size: 26px !important; font-weight: 800 !important; letter-spacing: -.02em !important; color: var(--tx) !important; }
+.org-shell .ph p { color: var(--mu) !important; }
+
+/* ✅ 9. BUTTONS & FORMS */
+.org-shell .btn { padding: 11px 20px !important; border: 0 !important; border-radius: 12px !important; cursor: pointer !important; background: linear-gradient(135deg,var(--a),var(--a2)) !important; box-shadow: 0 6px 20px color-mix(in srgb,var(--a2) 33%,transparent) !important; color: var(--on) !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; transition: transform .2s var(--ease), filter .2s, box-shadow .2s, background .2s !important; font-size: 14px !important; font-weight: 700 !important; letter-spacing: .01em !important; }
+.org-shell .btn:hover { filter: brightness(1.1) !important; transform: translateY(-1px) !important; }
+.org-shell .btn:active { transform: translateY(0) scale(.98) !important; }
+.org-shell .btn:disabled { opacity: .55 !important; cursor: not-allowed !important; filter: none !important; transform: none !important; }
+.org-shell .btn.gh { background: rgba(var(--w),.08) !important; color: var(--tx) !important; box-shadow: none !important; border: 1px solid var(--bd) !important; }
+.org-shell .btn.gh:hover { background: rgba(var(--w),.12) !important; }
+.org-shell .btn.sm { padding: 6px 12px !important; font-size: 12px !important; box-shadow: none !important; }
+
+.org-shell .in { width: 100% !important; background: rgba(var(--w),.06) !important; border: 1px solid var(--bd) !important; border-radius: 12px !important; padding: 11px 14px !important; outline: 0 !important; color: var(--tx) !important; transition: border-color .2s, box-shadow .2s, background .2s !important; }
+.org-shell .in::placeholder { color: var(--mu) !important; }
+.org-shell .in:focus { border-color: var(--a) !important; background: rgba(var(--w), .08) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--a) 20%, transparent) !important; }
+
+.org-shell .sel { margin-left: auto !important; background: rgba(var(--w), .08) !important; border: 1px solid var(--bd) !important; border-radius: 12px !important; padding: 7px 12px !important; font-size: 13px !important; color: var(--tx) !important; font-weight: 600 !important; outline: none !important; cursor: pointer !important; }
+.org-shell select option { background: var(--bg) !important; color: var(--tx) !important; }
+
+.org-shell .chips { display: flex !important; gap: 8px !important; flex-wrap: wrap !important; }
+.org-shell .chip { display: inline-flex !important; align-items: center !important; gap: 8px !important; cursor: pointer !important; font-size: 13px !important; padding: 8px 14px !important; font-weight: 600 !important; border-radius: 999px !important; border: 1px solid var(--bd) !important; background: rgba(var(--w),.04) !important; color: var(--tx) !important; }
+.org-shell .chip.on { background: var(--a) !important; color: var(--on) !important; border-color: transparent !important; }
+
+/* ✅ 10. TABLES */
+.org-shell .wrap { overflow-x: auto !important; border-radius: var(--r-card) !important; }
+.org-shell .tbl { width: 100% !important; border-collapse: collapse !important; min-width: 560px !important; }
+.org-shell .tbl th { text-align: left !important; color: var(--mu) !important; font-weight: 600 !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: .06em !important; padding: 8px 12px !important; }
+.org-shell .tbl td { padding: 13px 12px !important; border-top: 1px solid var(--bd) !important; color: var(--tx) !important; }
+.org-shell .tbl tbody tr { transition: background .2s !important; }
+.org-shell .tbl tbody tr:hover { background: rgba(var(--w), .03) !important; }
+.org-shell .tbl td:last-child { text-align: right !important; }
+.org-shell .tbl td b { display: block !important; font-weight: 600 !important; }
+.org-shell .tbl td small { color: var(--mu) !important; font-size: 11px !important; }
+
+.org-shell .pill { display: inline-block !important; padding: 4px 11px !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 600 !important; }
+.org-shell .ok { background: #2fb59426 !important; color: #4fe0b8 !important; }
+.org-shell .wa { background: #f0933a26 !important; color: #ffb066 !important; }
+.org-shell .no { background: #ff5d7326 !important; color: #ff8b9c !important; }
+
+/* ✅ 11. MODALS */
+.org-shell .ov { position: fixed !important; inset: 0 !important; z-index: 60 !important; display: grid !important; place-items: center !important; padding: 16px !important; background: rgba(0, 0, 0, .55) !important; -webkit-backdrop-filter: blur(6px) !important; backdrop-filter: blur(6px) !important; animation: orgFade .2s ease both; }
+.org-shell .dlg { width: min(900px, 100%) !important; max-height: 92vh !important; overflow: auto !important; border-radius: 26px !important; border: 1px solid var(--bd) !important; background: color-mix(in srgb, var(--bg) 94%, var(--a)) !important; box-shadow: 0 30px 80px rgba(0, 0, 0, .5) !important; animation: orgPop .28s var(--spring) both; }
+.org-shell .dh { display: flex !important; align-items: center !important; gap: 16px !important; padding: 22px 26px !important; border-bottom: 1px solid var(--bd) !important; }
+.org-shell .dh > div { flex: 1 !important; }
+.org-shell .dh h2 { font-size: 22px !important; letter-spacing: -.02em !important; color: var(--tx) !important; }
+.org-shell .x { width: 42px !important; height: 42px !important; border-radius: 50% !important; border: 1px solid var(--bd) !important; background: rgba(var(--w), .06) !important; display: grid !important; place-items: center !important; cursor: pointer !important; color: var(--tx) !important; transition: background .2s, transform .2s !important; }
+.org-shell .x:hover { background: rgba(var(--w), .12) !important; transform: rotate(90deg) !important; }
+.org-shell .db { padding: 22px 26px !important; display: grid !important; gap: 16px !important; }
+.org-shell .df { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 16px !important; padding: 16px 26px !important; border-top: 1px solid var(--bd) !important; }
+
+@keyframes orgFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes orgPop { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
+
+/* ✅ 12. LOGIN PAGE */
+.org-login-wrapper { position: fixed !important; inset: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 24px !important; z-index: 100 !important; }
+.org-login-wrapper .shell { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 32px !important; width: 100% !important; max-width: 1120px !important; }
+.org-login-wrapper .panel { padding: 40px !important; display: flex !important; flex-direction: column !important; }
+.org-login-wrapper .guidelines { justify-content: center !important; }
+.org-login-wrapper .eyebrow { font-size: 11px !important; font-weight: 700 !important; letter-spacing: .1em !important; text-transform: uppercase !important; color: var(--al) !important; margin-bottom: 8px !important; }
+.org-login-wrapper h1 { font-size: 36px !important; color: var(--tx) !important; margin-bottom: 16px !important; }
+.org-login-wrapper .lead { color: var(--mu) !important; font-size: 15px !important; margin-bottom: 24px !important; }
+.org-login-wrapper .acc-list { display: flex !important; flex-direction: column !important; gap: 12px !important; }
+.org-login-wrapper .acc { border: 1px solid var(--bd) !important; border-radius: 12px !important; background: rgba(var(--w), .02) !important; }
+.org-login-wrapper .acc__trigger { display: flex !important; align-items: center !important; gap: 16px !important; width: 100% !important; padding: 16px !important; text-align: left !important; }
+.org-login-wrapper .acc__icon { width: 32px !important; height: 32px !important; border-radius: 8px !important; background: rgba(var(--w), .1) !important; color: var(--al) !important; display: grid !important; place-items: center !important; }
+.org-login-wrapper .acc__title { flex: 1 !important; font-weight: 600 !important; font-size: 14px !important; color: var(--tx) !important; }
+.org-login-wrapper .acc__body { display: grid !important; grid-template-rows: 0fr !important; transition: grid-template-rows .3s !important; }
+.org-login-wrapper .acc.is-open .acc__body { grid-template-rows: 1fr !important; }
+.org-login-wrapper .acc__inner { overflow: hidden !important; }
+.org-login-wrapper .acc__inner p { padding: 0 16px 16px 64px !important; color: var(--mu) !important; font-size: 13px !important; }
+.org-login-wrapper .login__brand { display: flex !important; align-items: center !important; gap: 16px !important; margin-bottom: 32px !important; }
+.org-login-wrapper .login__logo { width: 64px !important; height: 64px !important; object-fit: contain !important; }
+.org-login-wrapper .form { display: flex !important; flex-direction: column !important; gap: 20px !important; }
+.org-login-wrapper .field label { display: block !important; font-size: 13px !important; font-weight: 600 !important; color: var(--sub) !important; margin-bottom: 8px !important; }
+.org-login-wrapper .input-wrap { position: relative !important; }
+.org-login-wrapper .input-wrap > i { position: absolute !important; left: 16px !important; top: 50% !important; transform: translateY(-50%) !important; color: var(--mu) !important; }
+.org-login-wrapper .input { width: 100% !important; padding: 14px 14px 14px 44px !important; border: 1px solid var(--bd) !important; border-radius: 12px !important; font-size: 14px !important; background: rgba(var(--w), .05) !important; color: var(--tx) !important; outline: none !important; }
+.org-login-wrapper .toggle-pw { position: absolute !important; right: 14px !important; top: 50% !important; transform: translateY(-50%) !important; color: var(--mu) !important; }
+.org-login-wrapper .btn { width: 100% !important; padding: 14px !important; border-radius: 12px !important; font-size: 14px !important; margin-top: 8px !important; }
+.org-login-wrapper .toast { margin-top: 20px !important; padding: 14px !important; border-radius: 12px !important; font-size: 13px !important; font-weight: 600 !important; display: flex !important; gap: 10px !important; }
+.org-login-wrapper .toast--error { background: rgba(224, 82, 82, .1) !important; color: #ff8b9c !important; border: 1px solid rgba(224, 82, 82, .3) !important; }
+.org-login-wrapper .toast--success { background: rgba(34, 145, 92, .1) !important; color: #4fe0b8 !important; border: 1px solid rgba(34, 145, 92, .3) !important; }
+
+/* ✅ 13. RESPONSIVE */
+@media (max-width: 1100px) {
+  .org-shell .cols, .org-shell .stats, .org-shell .set { grid-template-columns: 1fr !important; }
+  .org-shell .hero .quote { display: none !important; }
+  .org-shell .ft-grid { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 700px) {
+  .org-shell .org-main, .org-shell .sidebar:hover ~ .org-main, .org-shell .floating-sidebar:hover ~ .org-main { margin-left: 92px !important; }
+  .org-shell .stats, .org-shell .stats.s3 { grid-template-columns: 1fr !important; }
+  .org-shell .user div, .org-shell .search kbd { display: none !important; }
+  .org-shell .user { padding: 8px !important; }
+  .org-shell .ft-grid { grid-template-columns: 1fr !important; }
+  .org-login-wrapper .shell { grid-template-columns: 1fr !important; }
+  .org-login-wrapper .guidelines { display: none !important; }
+}
+
+/* ============================================================
+   BACKGROUND LOGO (hero-logo) — fixed, behind content
+   ============================================================ */
+.org-shell .hero-logo {
+  position: fixed !important;
+  top: 50% !important;
+  left: 25% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 80vh !important;
+  height: 80vh !important;
+  object-fit: contain !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  opacity: .2 !important;
+}
+.org-shell .top,
+.org-shell .page-dashboard,
+.org-shell .org-content { position: relative !important; z-index: 10 !important; }
+
+/* ============================================================
+   FLOATING SIDEBAR
+   ============================================================ */
+.org-shell .floating-sidebar {
+  position: fixed !important;
+  left: 24px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 76px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding: 16px 14px !important;
+  border-radius: 32px !important;
+  z-index: 100 !important;
+  overflow: hidden !important;
+  transition: width .4s var(--spring), background .4s ease, box-shadow .4s ease !important;
+  background: linear-gradient(145deg, rgba(var(--w), .1), rgba(var(--w), .03)) !important;
+  border: 1px solid rgba(var(--w), .15) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .25), inset 0 1px 0 rgba(var(--w), .2) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  backdrop-filter: blur(24px) saturate(150%) !important;
+}
+.org-shell .floating-sidebar:hover {
+  width: 250px !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .4), 0 0 40px color-mix(in srgb, var(--a) 18%, transparent), inset 0 1px 0 rgba(var(--w), .25) !important;
+}
+
+.org-shell .floating-sidebar .brand { display: flex !important; align-items: center !important; width: 48px !important; padding: 0 7px 16px !important; margin-bottom: 8px !important; border-bottom: 1px solid rgba(var(--w), .1) !important; overflow: hidden !important; transition: width .3s ease !important; }
+.org-shell .floating-sidebar:hover .brand { width: 100% !important; }
+.org-shell .floating-sidebar .logo { width: 34px !important; height: 34px !important; flex-shrink: 0 !important; border-radius: 8px !important; object-fit: cover !important; }
+
+.org-shell .floating-sidebar .nav-icon { display: flex !important; align-items: center !important; width: 48px !important; height: 48px !important; border-radius: 16px !important; padding: 0 13px !important; text-decoration: none !important; transition: background .2s ease, color .2s ease, width .3s ease, box-shadow .2s !important; white-space: nowrap !important; color: var(--mu) !important; }
+.org-shell .floating-sidebar:hover .nav-icon { width: 100% !important; }
+.org-shell .floating-sidebar .nav-icon svg { width: 22px !important; height: 22px !important; flex-shrink: 0 !important; stroke: currentColor !important; stroke-width: 2 !important; fill: none !important; }
+.org-shell .floating-sidebar .nav-icon:hover { background: rgba(var(--w), .1) !important; color: var(--tx) !important; }
+.org-shell .floating-sidebar .nav-icon.active { background: linear-gradient(135deg, var(--a), var(--a2)) !important; color: #fff !important; box-shadow: 0 6px 20px color-mix(in srgb, var(--a) 45%, transparent) !important; }
+
+.org-shell .floating-sidebar .t { opacity: 0 !important; visibility: hidden !important; margin-left: 16px !important; font-size: 14px !important; font-weight: 600 !important; transform: translateX(-10px) !important; transition: all .3s var(--spring) !important; color: inherit !important; }
+.org-shell .floating-sidebar:hover .t { opacity: 1 !important; visibility: visible !important; transform: translateX(0) !important; transition-delay: .1s !important; }
+
+.org-shell .floating-sidebar .foot { margin-top: auto !important; width: 48px !important; padding-top: 16px !important; border-top: 1px solid rgba(var(--w), .1) !important; overflow: hidden !important; transition: width .3s ease !important; }
+.org-shell .floating-sidebar:hover .foot { width: 100% !important; }
+.org-shell .floating-sidebar .me { display: flex !important; align-items: center !important; text-decoration: none !important; color: inherit !important; }
+.org-shell .floating-sidebar .av { width: 34px !important; height: 34px !important; flex-shrink: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center !important; background: var(--a) !important; color: #fff !important; font-size: 12px !important; font-weight: 700 !important; }
+
+/* ============================================================
+   GLASSMORPHISM TOPBAR
+   ============================================================ */
+.org-shell .top.org-topbar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 20px !important;
+  margin-bottom: 24px !important;
+  width: 100% !important;
+  padding: 12px 24px !important;
+  border-radius: 99px !important;
+  background: color-mix(in srgb, var(--s) 62%, transparent) !important;
+  border: 1px solid rgba(var(--w), .12) !important;
+  backdrop-filter: blur(24px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(var(--w), .08) !important;
+  position: sticky !important;
+  top: 16px !important;
+  z-index: 50 !important;
+}
+html[data-mode="light"] body .org-shell .top.org-topbar {
+  background: rgba(255, 255, 255, .85) !important;
+  border: 1px solid rgba(0, 0, 0, .1) !important;
+}
+
+.org-shell .org-brand { display: flex !important; align-items: center !important; text-decoration: none !important; }
+.org-shell .org-brand-logo { width: 42px !important; height: 42px !important; border-radius: 50% !important; object-fit: cover !important; border: 2px solid rgba(var(--w), .12) !important; box-shadow: 0 0 18px color-mix(in srgb, var(--a) 30%, transparent) !important; }
+
+.org-shell .top.org-topbar .search { flex: 1 !important; display: flex !important; align-items: center !important; gap: 10px !important; height: 44px !important; padding: 0 16px !important; border-radius: 999px !important; background: rgba(var(--w), .05) !important; border: 1px solid rgba(var(--w), .1) !important; color: var(--tx) !important; transition: border-color .2s, box-shadow .2s !important; }
+.org-shell .top.org-topbar .search:focus-within { border-color: var(--a) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--a) 18%, transparent) !important; }
+.org-shell .top.org-topbar .search input { flex: 1 !important; background: transparent !important; border: none !important; outline: none !important; color: var(--tx) !important; font-size: 14px !important; }
+
+.org-shell .org-nav-actions { display: flex !important; align-items: center !important; gap: 10px !important; margin-left: auto !important; }
+
+.org-shell .org-action-btn { display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; height: 44px !important; padding: 0 16px !important; border-radius: 999px !important; background: rgba(var(--w), .05) !important; border: 1px solid rgba(var(--w), .1) !important; color: var(--tx) !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; text-decoration: none !important; transition: all .2s ease !important; }
+.org-shell .org-action-btn:hover { background: rgba(var(--w), .1) !important; transform: translateY(-1px) !important; }
+.org-shell .org-lang-code { font-size: 13px !important; font-weight: 700 !important; color: var(--tx) !important; }
+.org-shell .org-action-btn.org-icon-btn { width: 44px !important; padding: 0 !important; position: relative !important; }
+
+.org-shell .org-badge { position: absolute !important; top: -2px !important; right: -2px !important; min-width: 18px !important; height: 18px !important; border-radius: 99px !important; background: #ff5d73 !important; color: #fff !important; font-size: 10px !important; font-weight: 800 !important; display: grid !important; place-items: center !important; border: 2px solid var(--bg) !important; }
+
+.org-shell .org-user-btn { display: flex !important; align-items: center !important; gap: 8px !important; padding: 4px 12px 4px 4px !important; border-radius: 999px !important; background: rgba(var(--w), .05) !important; border: 1px solid rgba(var(--w), .1) !important; cursor: pointer !important; color: var(--tx) !important; height: 44px !important; transition: background .2s !important; }
+.org-shell .org-user-btn:hover { background: rgba(var(--w), .1) !important; }
+.org-shell .org-avatar { width: 34px !important; height: 34px !important; border-radius: 50% !important; background: var(--a) !important; color: #fff !important; display: grid !important; place-items: center !important; font-size: 13px !important; font-weight: 800 !important; }
+.org-shell .org-chevron { color: var(--mu) !important; transition: transform .2s !important; }
+.org-shell .user-wrap.is-open .org-chevron { transform: rotate(180deg) !important; }
+
+.org-shell .org-dropdown { position: absolute !important; top: calc(100% + 12px) !important; right: 0 !important; width: 220px !important; display: flex !important; flex-direction: column !important; padding: 8px !important; border-radius: 16px !important; background: color-mix(in srgb, var(--s) 95%, transparent) !important; border: 1px solid rgba(var(--w), .1) !important; box-shadow: 0 10px 40px rgba(0, 0, 0, .5) !important; backdrop-filter: blur(24px) !important; -webkit-backdrop-filter: blur(24px) !important; opacity: 0; visibility: hidden; transform: translateY(-10px) scale(.98); transition: all .2s ease !important; transform-origin: top right; }
+html[data-mode="light"] body .org-shell .org-dropdown { background: rgba(255, 255, 255, .95) !important; border: 1px solid rgba(0, 0, 0, .1) !important; }
+.org-shell .user-wrap.is-open .org-dropdown { opacity: 1 !important; visibility: visible !important; transform: translateY(0) scale(1) !important; }
+
+.org-shell .org-dropdown .dropdown-header { padding: 12px 14px !important; display: flex !important; flex-direction: column !important; gap: 2px; }
+.org-shell .org-dropdown .dropdown-header b { font-size: 14px !important; color: var(--tx) !important; }
+.org-shell .org-dropdown .dropdown-header small { font-size: 11px !important; color: var(--mu) !important; }
+
+.org-shell .org-dropdown a, .org-shell .org-dropdown button { display: flex !important; align-items: center !important; gap: 12px !important; width: 100% !important; padding: 10px 14px !important; border-radius: 10px !important; font-size: 13.5px !important; font-weight: 600 !important; color: var(--tx) !important; text-decoration: none !important; background: transparent !important; border: none !important; cursor: pointer !important; text-align: left !important; transition: background .15s !important; }
+.org-shell .org-dropdown a:hover, .org-shell .org-dropdown button:hover { background: rgba(var(--w), .1) !important; }
+.org-shell .org-dropdown hr { border: none !important; border-top: 1px solid rgba(var(--w), .1) !important; margin: 6px 8px !important; }
+.org-shell .org-dropdown .danger { color: #ff5d73 !important; }
+.org-shell .org-dropdown .danger:hover { background: rgba(255, 93, 115, .1) !important; }
+
+/* ============================================================
+   ORGANIZATION BACKGROUND LAYER
+   ============================================================ */
+html, body { background-color: transparent !important; margin: 0; padding: 0; min-height: 100vh; }
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url('/campus.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  transition: opacity .5s ease;
+}
+html[data-theme-mode="light"] body::before { opacity: .18; mix-blend-mode: multiply; }
+html[data-theme-mode="light"] .org-shell { background-color: transparent !important; background-image: none !important; }
+html[data-theme-mode="dark"] body::before { opacity: .22; mix-blend-mode: screen; }
+html[data-theme-mode="dark"] .org-shell { background-color: rgba(14, 22, 38, .85) !important; }
+
+/* ============================================================
+   CHIPS — STATIC (no hover animation, active keeps glow)
+   ============================================================ */
+.org-shell .flt button,
+.org-shell .flt .chip,
+.org-shell .chips > .chip,
+.org-shell div.chips > button,
+html body .org-shell .chips [class*="chip"] {
+  transition: none !important;
+  cursor: default !important;
+}
+.org-shell .flt button:not(.on):not(.active):hover,
+.org-shell .chips > .chip:not(.on):hover,
+.org-shell .chips > .chip:not(.on):focus,
+.org-shell .chips > .chip:not(.on):active,
+.org-shell div.chips > button:not(.on):not(.active):hover,
+.org-shell div.chips > button:not(.on):not(.active):focus,
+.org-shell div.chips > button:not(.on):not(.active):active,
+html body .org-shell .chips [class*="chip"]:not(.on):not(.is-active):hover {
+  background: rgba(var(--w), .04) !important;
+  background-color: rgba(var(--w), .04) !important;
+  color: var(--tx) !important;
+  -webkit-text-fill-color: var(--tx) !important;
+  border-color: var(--bd) !important;
+  transform: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+.org-shell .flt button.on,
+.org-shell .flt .chip.on,
+.org-shell .chips > .chip.on,
+.org-shell .chips > .chip.on:hover,
+.org-shell .chips > .chip.on:focus,
+.org-shell .chips > .chip.on:active,
+.org-shell div.chips > button.on,
+.org-shell div.chips > button.on:hover,
+.org-shell div.chips > button.active,
+.org-shell div.chips > button.active:hover {
+  background: var(--a) !important;
+  background-color: var(--a) !important;
+  color: var(--on) !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--a) 40%, transparent) !important;
+  transform: none !important;
+  filter: none !important;
+  cursor: pointer !important;
+}
+.org-shell .flt button *,
+.org-shell .chips > .chip > *,
+.org-shell div.chips > button > *,
+html body .org-shell .chips [class*="chip"] * { pointer-events: none !important; transition: none !important; }
+
+/* ============================================================
+   FIXED MAX-WIDTH DASHBOARD
+   ============================================================ */
+.org-shell .page-dashboard { width: 100% !important; max-width: 1200px !important; margin: 0 auto !important; }
+.org-shell .page-dashboard .cols { grid-template-columns: minmax(0, 1fr) 360px !important; gap: 24px !important; }
+.org-shell .page-dashboard .hero { padding: 24px 32px !important; }
+.org-shell .page-dashboard .stats { grid-template-columns: repeat(4, 1fr) !important; gap: 20px !important; }
+.org-shell .page-dashboard .card:has(.chart),
+.org-shell .page-dashboard .chart-container { height: 380px !important; display: flex !important; flex-direction: column !important; }
+
+@media (max-width: 1100px) {
+  .org-shell .page-dashboard .cols, .org-shell .page-dashboard .stats { grid-template-columns: 1fr !important; }
+  .org-shell .page-dashboard .card:has(.chart), .org-shell .page-dashboard .chart-container { height: auto !important; }
+}
+@media (max-width: 700px) {
+  .org-shell .top.org-topbar { padding: 10px 14px !important; gap: 10px !important; }
+  .org-shell .org-action-btn:not(.org-icon-btn) .org-lang-code { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .org-shell *, .org-shell *::before, .org-shell *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+/* ============================================================
+   TOPBAR STICKY FIX (WALANG BINAGO SA HUGIS AT SIZE)
+   ============================================================ */
+
+/* 1. Alisin ang scroll sa body para ang org-main ang mag-scroll */
+html, body {
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+
+.org-shell {
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+
+/* 2. Gawing scrollable ang main container, tanggalin ang top padding para 
+      walang gap kapag dumikit sa taas */
+.org-shell .org-main {
+  height: 100vh !important;
+  overflow-y: auto !important;
+  padding-top: 0 !important;
+}
+
+/* 3. I-stick ang topbar (walang binago sa size at border-radius) */
+.org-shell .top.org-topbar {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 16px !important; /* Dudulo dito kapag nag-scroll pababa */
+  z-index: 99999 !important; /* Para hindi matakpan ng cards */
+  
+  /* Panatilihin ang original glass at bilog na hugis (walang binago) */
+  background: color-mix(in srgb, var(--s) 62%, transparent) !important; 
+  border: 1px solid rgba(var(--w), .12) !important;
+  backdrop-filter: blur(24px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  
+  /* Konting transition para swabe */
+  transition: background 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+/* 4. Kapag nasa tuktok na (nag-scroll), lagyan ng shadow para hindi magulo yung likod */
+.org-shell .top.org-topbar.is-scrolled {
+  background: color-mix(in srgb, var(--s) 85%, transparent) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(var(--w), .1) !important;
+}
+/* ============================================================
+   FINAL FIX: FIXED TOPBAR (PERMANENTENG NAKA-DIKIT SA TAAS)
+   ============================================================ */
+
+/* Ibalik ang normal scrolling */
+html, body {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.org-shell {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
+.org-shell .org-main {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+  padding-top: 90px !important; /* Espasyo para hindi mag-overlap ang content sa fixed topbar */
+}
+
+/* ------------------------------------------------------------
+   ANG TOPBAR: GAGAWING FIXED PERO KAPAREHONG-KAPAREHO ANG HUGIS
+   ------------------------------------------------------------ */
+.org-shell .top.org-topbar {
+  position: fixed !important;
+  top: 16px !important; /* Kaparehong gap sa taas */
+  left: 124px !important; /* Kaparehas ng margin-left ng org-main */
+  right: 20px !important; /* Kaparehas ng right padding */
+  width: auto !important;
+  margin: 0 !important;
+  
+  /* Original glass design */
+  background: color-mix(in srgb, var(--s) 62%, transparent) !important; 
+  border: 1px solid rgba(var(--w), .12) !important;
+  backdrop-filter: blur(24px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(var(--w), .08) !important;
+  z-index: 99999 !important;
+  
+  transition: left 0.4s var(--spring), background 0.3s ease !important;
+}
+
+/* Kapag nag-hover ang sidebar, sasabay ang topbar pakanan */
+.org-shell .sidebar:hover ~ .org-main .top.org-topbar {
+  left: 296px !important;
+}
+.org-shell .floating-sidebar:hover ~ .org-main .top.org-topbar {
+  left: 300px !important;
+}
+
+/* Kapag nag-scroll, dagdag shadow */
+.org-shell .top.org-topbar.is-scrolled {
+  background: color-mix(in srgb, var(--s) 85%, transparent) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(var(--w), .1) !important;
+}
+
+/*
+
+
+
+/* Responsive adjustments */
+@media (max-width: 700px) {
+  .org-shell .top.org-topbar {
+    left: 92px !important;
+    right: 16px !important;
+  }
+  .org-shell .org-main {
+    padding-top: 80px !important;
+  }
+}
+/* ============================================================
+   TRANSPARENT GLASS CARDS (MATCH ALL 10 THEMES)
+   ============================================================ */
+
+/* 1. Gawing transparent glass ang Product Card */
+.org-shell .pc {
+  background: var(--glass-bg) !important; /* Gagamitin ang 10 theme colors */
+  border: 1px solid var(--glass-bd) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  box-shadow: var(--glass-shadow) !important;
+  border-radius: 16px !important;
+  transition: all 0.3s var(--ease) !important;
+}
+
+.org-shell .pc:hover {
+  border-color: rgba(var(--w), 0.25) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(var(--w), 0.2) !important;
+  transform: translateY(-4px) !important;
+}
+
+/* 2. Gawing transparent din ang Size Boxes */
+.org-shell .size-box {
+  background: rgba(var(--w), 0.05) !important;
+  border: 1px solid rgba(var(--w), 0.1) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  transition: background 0.2s ease !important;
+}
+
+.org-shell .pc:hover .size-box {
+  background: rgba(var(--w), 0.08) !important;
+}
+
+/* 3. I-match ang "Manage Stock" button sa glass theme */
+.org-shell .manage-btn {
+  background: rgba(var(--w), 0.06) !important;
+  border: 1px solid rgba(var(--w), 0.12) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  color: #fff !important;
+}
+
+.org-shell .manage-btn:hover {
+  background: var(--a) !important; /* Mag-highlight gamit ang theme accent color */
+  border-color: transparent !important;
+  color: var(--on) !important;
+}
+
+/* 4. Siguraduhing transparent din ang inner elements */
+.org-shell .pd-metrics,
+.org-shell .pd-stock-section,
+.org-shell .pd-image-box,
+.org-shell .pd-btn.ghost {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-bd) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+}
+
+/* 5. Ayusin ang hover state ng category chips */
+.org-shell .chip {
+  background: rgba(var(--w), 0.04) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+.org-shell .chip.on {
+  background: var(--a) !important;
+  color: var(--on) !important;
+}
+/* ============================================================
+   PRODUCTS PAGE: BIG GLASS PANEL WRAPPER
+   ============================================================ */
+
+/* 1. Gawing relative container ang page at bigyan ng espasyo sa loob */
+.org-shell .page-products {
+  position: relative !important;
+  padding: 32px !important; 
+  border-radius: 28px !important;
+  z-index: 1 !important;
+  max-width: 1400px !important; /* Saktong lapad ng panel */
+  margin: 0 auto !important; /* Nakagitna sa screen */
+  margin-top: 16px !important; 
+  margin-bottom: 32px !important;
+}
+
+/* 2. Gumawa ng glass background gamit ang ::before */
+.org-shell .page-products::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important; /* Puno ang buong page-products */
+  border-radius: 28px !important; /* Malambot ang edges */
+  
+  /* Glassmorphism formula (konektado sa 10 theme colors mo) */
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-bd) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  box-shadow: var(--glass-shadow) !important;
+  
+  z-index: -1 !important; /* Nasa likod ng content pero nasa harap ng campus bg */
+  pointer-events: none !important;
+}
+
+/* 3. Ayusin ang Header (Products title + Add button) para maging maaliwalas */
+.org-shell .page-products .ph {
+  margin-bottom: 24px !important;
+  padding-bottom: 16px !important;
+  border-bottom: 1px solid rgba(var(--w), 0.08) !important; /* Manipis na divider */
+}
+
+/* 4. Ayusin ang Stats Cards (Units, Low, Out) para maging transparent glass din */
+.org-shell .page-products .stats .card {
+  background: rgba(var(--w), 0.03) !important; 
+  border: 1px solid rgba(var(--w), 0.08) !important;
+  box-shadow: none !important;
+}
+
+/* 5. Ayusin ang Filter Box (Categories container) */
+.org-shell .page-products .flt {
+  background: rgba(var(--w), 0.02) !important;
+  border: 1px solid rgba(var(--w), 0.06) !important;
+  box-shadow: none !important;
+  margin-bottom: 32px !important;
+}
+
+/* 6. Siguraduhing may tamang espasyo ang Cards Grid sa ilalim */
+.org-shell .page-products .pgrid {
+  padding-top: 8px !important;
+}
+
+/* 7. Responsive adjustment para sa mobile */
+@media (max-width: 700px) {
+  .org-shell .page-products {
+    padding: 16px !important;
+    border-radius: 20px !important;
+  }
+  .org-shell .page-products::before {
+    border-radius: 20px !important;
+  }
+}
+/* ============================================================
+   GLOBAL SCROLL FIX (IBALIK ANG SCROLL SA LAHAT)
+   ============================================================ */
+
+/* 1. Ibalik ang scroll sa buong browser (Tanggalin ang dating lock) */
+html, body {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-y: auto !important; /* 👈 IBINALIK ANG SCROLL */
+  overflow-x: hidden !important;
+  margin: 0 !important;
+}
+
+/* 2. I-override ang org-shell at org-main para maging normal */
+.org-shell {
+  display: flex !important;
+  min-height: 100vh !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.org-shell .org-main {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important; /* 👈 HAYAANG MAG-SCROLL */
+  padding-top: 90px !important; /* Space para sa topbar */
+  padding-bottom: 32px !important;
+}
+
+/* 3. TOPBAR FIX: Gawing sticky para sumabay sa scroll nang walang lag */
+.org-shell .top.org-topbar {
+  position: sticky !important;
+  top: 16px !important;
+  z-index: 9999 !important;
+  margin-bottom: 24px !important;
+}
+
+/* 4. Para sa PRODUCT DETAILS PAGE lang: dito lang natin i-lock ang scroll */
+.org-shell .pd-page {
+  height: calc(100vh - 120px) !important;
+  overflow: hidden !important;
+}
+
+/* 5. Custom Scrollbar (Para premium tignan) */
+.org-shell ::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.org-shell ::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.org-shell ::-webkit-scrollbar-thumb {
+  background: rgba(var(--w), 0.15) !important;
+  border-radius: 99px !important;
+}
+
+.org-shell ::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--w), 0.3) !important;
+}
+/* ============================================================
+   FINAL POLISH: PREMIUM FLOATING SIDEBAR (PUSH EFFECT)
+   ============================================================ */
+
+/* 1. Sidebar (Glassmorphism, Sticky, at nag-pupush) */
+.org-shell .org-rail {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 16px !important;
+  height: calc(100vh - 32px) !important;
+  margin: 16px 0 16px 16px !important;
+  width: 80px !important;
+  flex-shrink: 0 !important; /* Para umurong ang main content */
+  border-radius: 24px !important;
+  z-index: 10000 !important;
+  padding: 16px 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  
+  /* Premium Glass Effect */
+  background: linear-gradient(145deg, rgba(var(--w), 0.08), rgba(var(--w), 0.02)) !important;
+  border: 1px solid rgba(var(--w), 0.12) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(var(--w), 0.15) !important;
+  
+  transform: translateZ(0) !important;
+  will-change: width !important;
+  transition: width 0.3s var(--spring), background 0.3s ease !important;
+}
+
+/* 2. Pag-hover, lalaki at mag-o-open */
+.org-shell .org-rail:hover {
+  width: 250px !important;
+  background: color-mix(in srgb, var(--s) 85%, transparent) !important;
+}
+
+/* 3. Sidebar Elements (Icons, Brand, Avatar) */
+.org-shell .org-rail .brand { display: flex !important; align-items: center !important; gap: 12px !important; padding-bottom: 16px !important; margin-bottom: 8px !important; border-bottom: 1px solid rgba(var(--w), 0.08) !important; white-space: nowrap !important; }
+.org-shell .org-rail .logo { width: 36px !important; height: 36px !important; flex-shrink: 0 !important; border-radius: 50% !important; object-fit: cover !important; border: 1px solid rgba(var(--w), 0.15) !important; }
+.org-shell .org-rail .nav-list { display: flex !important; flex-direction: column !important; gap: 6px !important; flex: 1 !important; margin-top: 12px !important; }
+.org-shell .org-rail .nav-icon { display: flex !important; align-items: center !important; height: 46px !important; border-radius: 12px !important; padding: 0 14px !important; color: var(--mu) !important; text-decoration: none !important; white-space: nowrap !important; transition: background 0.2s, color 0.2s !important; }
+.org-shell .org-rail .nav-icon svg { width: 22px !important; height: 22px !important; flex-shrink: 0 !important; }
+.org-shell .org-rail .nav-icon:hover { background: rgba(var(--w), 0.08) !important; color: var(--tx) !important; }
+.org-shell .org-rail .nav-icon.active { background: var(--a) !important; color: #fff !important; box-shadow: 0 4px 12px color-mix(in srgb, var(--a) 30%, transparent) !important; }
+.org-shell .org-rail .t { opacity: 0 !important; visibility: hidden !important; margin-left: 16px !important; font-size: 14px !important; font-weight: 600 !important; transition: opacity 0.2s ease !important; }
+.org-shell .org-rail:hover .t { opacity: 1 !important; visibility: visible !important; transition-delay: 0.1s !important; }
+.org-shell .org-rail .foot { margin-top: auto !important; padding-top: 16px !important; border-top: 1px solid rgba(var(--w), 0.08) !important; }
+.org-shell .org-rail .me { display: flex !important; align-items: center !important; text-decoration: none !important; color: inherit !important; }
+.org-shell .org-rail .av { width: 36px !important; height: 36px !important; flex-shrink: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center !important; background: linear-gradient(135deg, var(--a), var(--a2)) !important; color: #fff !important; font-size: 13px !important; font-weight: 700 !important; }
+
+/* 4. PUSH EFFECT: Inaayos ang Main Content para umurong */
+.org-shell {
+  display: flex !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
+.org-shell .org-main {
+  flex: 1 !important;
+  min-width: 0 !important;
+  padding: 16px 24px 32px 24px !important;
+  margin-left: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: auto !important;
+  overflow: visible !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* 5. TOPBAR: Naka-sticky at Malinis */
+.org-shell .top.org-topbar {
+  position: sticky !important;
+  top: 16px !important;
+  z-index: 999 !important;
+  width: 100% !important;
+  margin: 0 0 24px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 12px 24px !important;
+  border-radius: 99px !important;
+  
+  background: color-mix(in srgb, var(--s) 62%, transparent) !important;
+  border: 1px solid rgba(var(--w), .12) !important;
+  backdrop-filter: blur(24px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(var(--w), .08) !important;
+}
+
+/* 6. TOPBAR OPTIMIZATION (Para hindi mag-lag kapag bumukas sidebar) */
+.org-shell .top.org-topbar .search {
+  background: rgba(var(--w), 0.06) !important;
+  border: 1px solid rgba(var(--w), 0.1) !important;
+  border-radius: 99px !important;
+  height: 44px !important;
+  flex: 1 !important;
+}
+
+/* 7. Global Scroll Fix para hindi mawala */
+html, body {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* 8. Responsive */
+@media (max-width: 700px) {
+  .org-shell .org-rail {
+    margin-left: 8px !important;
+    width: 68px !important;
+  }
+  .org-shell .org-main {
+    padding: 16px 12px 24px 16px !important;
+  }
+}
+/* ============================================================
+   EMERGENCY SCROLL FIX (PUNITIN ANG LAHAT NG LUMANG OVERFLOW)
+   ============================================================ */
+
+/* 1. I-unlock ang buong window */
+html, body {
+  height: 100% !important;
+  min-height: 100% !important;
+  overflow-y: auto !important; 
+  overflow-x: hidden !important;
+}
+
+/* 2. Ayusin ang org-shell (Flex layout) */
+.org-shell {
+  display: flex !important;
+  height: 100vh !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* 3. Ang sidebar (Naka-fixed width) */
+.org-shell .org-rail {
+  height: 100vh !important; /* Abot sa dulo */
+  flex-shrink: 0 !important;
+  position: relative !important;
+  margin: 0 !important;
+  border-radius: 0 !important; /* Gawing sagad sa gilid */
+}
+
+/* 4. ANG MAIN CONTENT - Dito natin pilitin ang scroll */
+.org-shell .org-main {
+  flex: 1 !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  overflow-y: auto !important; /* Pilitin ang scroll dito */
+  overflow-x: hidden !important;
+  padding: 16px 24px 48px 24px !important;
+  display: block !important; /* Wag gawing flex */
+}
+
+/* 5. Topbar (Sticky sa loob ng main) */
+.org-shell .top.org-topbar {
+  position: sticky !important;
+  top: 16px !important;
+  z-index: 999 !important;
+  width: 100% !important;
+  margin: 0 0 24px 0 !important;
+}
+/* ============================================================
+   FINAL SCROLL & LAYOUT FIX (IDINAGDAG SA DULO)
+   ============================================================ */
+
+/* 1. I-lock ang window at body */
+html, body {
+  height: 100vh !important;
+  width: 100vw !important;
+  overflow: hidden !important; 
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 2. Ang Shell ay flex container na sakto sa screen */
+.org-shell {
+  display: flex !important;
+  height: 100vh !important;
+  width: 100vw !important;
+  overflow: hidden !important;
+}
+
+/* 3. Sidebar - Naka-fixed sa kaliwa, buong taas */
+.org-shell .org-rail,
+.org-shell .sidebar,
+.org-shell .floating-sidebar {
+  height: 100vh !important;
+  flex-shrink: 0 !important;
+  overflow-y: auto !important; /* Scroll kung marami ang menu */
+}
+
+/* 4. MAIN CONTENT - Ito lang ang mag-s-scroll */
+.org-shell .org-main {
+  flex: 1 !important;
+  height: 100vh !important;
+  overflow-y: auto !important; /* Dito natin pilitin ang scroll */
+  overflow-x: hidden !important;
+  padding: 16px 24px 48px 24px !important;
+  display: block !important;
+  box-sizing: border-box !important; /* Importante para di lumampas ang padding */
+}
+
+/* 5. TOPBAR - Naka-fixed sa loob ng main scroll */
+.org-shell .top.org-topbar {
+  position: sticky !important;
+  top: 16px !important;
+  z-index: 9999 !important;
+  width: 100% !important;
+  margin: 0 0 24px 0 !important;
+  /* Siguraduhing walang lumang fixed positioning na sumisira */
+  left: auto !important; 
+  right: auto !important;
+}
+
+/* 6. I-override ang lumang fixed topbar na may margin-left */
+.org-shell .top.org-topbar {
+  position: sticky !important; 
+  top: 16px !important;
+}
+/* ============================================================
+   🚨 FINAL BOSS FIX: PILITIN ANG SCROLL (TALUNIN ANG !IMPORTANT)
+   ============================================================ */
+
+/* 1. I-override ang HTML at BODY. Dahil naka-inline style sila, 
+      kailangan nating pilitin gamit ang tag selector at !important */
+html, body {
+  overflow: visible !important;  /* 👈 Ibalik sa visible */
+  height: auto !important;       /* 👈 Hayaan habaan */
+  min-height: 100vh !important;
+}
+
+/* 2. Gawing auto ang scroll sa buong window */
+html {
+  overflow-y: auto !important;
+}
+body {
+  overflow-y: auto !important;
+}
+
+/* 3. Siguraduhing may sapat na space sa dulo ng main */
+.org-shell .org-main {
+  padding-bottom: 150px !important; /* Para hindi sagad sa dulo */
+}
+
+/* 4. I-fix ang Topbar para maging Sticky */
+.org-shell .top.org-topbar {
+  position: sticky !important;
+  top: 16px !important;
+  z-index: 9999 !important;
+  width: 100% !important;
+  left: auto !important;
+  right: auto !important;
+}
+
+/* 5. Siguraduhing naka-pako ang Sidebar */
+.org-shell aside.org-rail {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100vh !important;
+  z-index: 100000 !important;
+}
+/* ============================================================
+   COMPACT LAYOUT — idikit sa PINAKADULO ng layout.css
+   ⚠ BURAHIN muna ang LAHAT ng dating "COMPACT BENTO LAYOUT" block
+   bago ito idikit (para hindi magsalpukan).
+   Naka-scope sa .org-compact → walang kulay/theme na binago.
+   Para ibalik ang dati: alisin ang "org-compact" class sa
+   OrganizationLayout.tsx.
+   ============================================================ */
+
+.org-shell.org-compact {
+  --gap: 12px;
+  --rail-offset: 12px;
+  --rail-w: 64px;
+  --rail-w-open: 220px;
+  --main-left: calc(var(--rail-offset) + var(--rail-w) + var(--gap));
+}
+
+/* ---------- Scroll: window lang ang nag-i-scroll ---------- */
+html:has(.org-compact) {
+  height: auto !important; min-height: 100% !important;
+  overflow-x: hidden !important; overflow-y: auto !important;
+}
+body:has(.org-compact) {
+  height: auto !important; width: auto !important; min-height: 100vh !important;
+  overflow: visible !important;
+}
+.org-shell.org-compact {
+  display: block !important; width: 100% !important;
+  height: auto !important; min-height: 100vh !important; overflow: visible !important;
+}
+
+/* ---------- Sidebar: slim floating rail ---------- */
+html body .org-shell.org-compact .org-rail,
+html body .org-shell.org-compact .floating-sidebar {
+  position: fixed !important; transform: none !important; right: auto !important;
+  top: var(--rail-offset) !important; bottom: var(--rail-offset) !important; left: var(--rail-offset) !important;
+  height: auto !important; margin: 0 !important;
+  width: var(--rail-w) !important; padding: 10px !important;
+  border-radius: 22px !important;
+  overflow-x: hidden !important; overflow-y: auto !important; scrollbar-width: none !important;
+}
+html body .org-shell.org-compact .org-rail:hover,
+html body .org-shell.org-compact .floating-sidebar:hover { width: var(--rail-w-open) !important; }
+.org-shell.org-compact .org-rail .brand { padding: 2px 0 10px 6px !important; margin-bottom: 4px !important; gap: 10px !important; }
+.org-shell.org-compact .org-rail .logo { width: 32px !important; height: 32px !important; }
+.org-shell.org-compact .org-rail .nav-list { gap: 4px !important; margin-top: 8px !important; }
+.org-shell.org-compact .org-rail .nav-icon { height: 42px !important; padding: 0 11px !important; border-radius: 12px !important; }
+.org-shell.org-compact .org-rail .foot { padding-top: 10px !important; }
+.org-shell.org-compact .org-rail .me { padding-left: 6px !important; }
+.org-shell.org-compact .org-rail .av { width: 32px !important; height: 32px !important; }
+
+/* ---------- Main ---------- */
+.org-shell.org-compact .org-main,
+.org-shell.org-compact .sidebar:hover ~ .org-main,
+.org-shell.org-compact .org-rail:hover ~ .org-main {
+  display: block !important; width: auto !important;
+  height: auto !important; min-height: 100vh !important; overflow: visible !important;
+  margin-left: var(--main-left) !important;
+  padding: var(--rail-offset) 14px 24px 0 !important;
+}
+
+/* ============================================================
+   TOPBAR ROW:  [ Welcome card .......... ] [Search pill] (o) (o) (CV v)
+   Walang bar sa taas; lalabas lang ang glass pag nag-scroll.
+   ============================================================ */
+html body .org-shell.org-compact .top.org-topbar {
+  position: sticky !important; top: var(--rail-offset) !important; left: auto !important; right: auto !important;
+  width: 100% !important; margin: 0 0 var(--gap) !important;
+  padding: 0 !important; gap: 12px !important;
+  border: 1px solid transparent !important; border-radius: 20px !important;
+  background: transparent !important; box-shadow: none !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  transition: background .25s ease, border-color .25s ease, box-shadow .25s ease, padding .25s ease !important;
+}
+html body .org-shell.org-compact .top.org-topbar.is-scrolled {
+  padding: 6px 8px !important;
+  background: color-mix(in srgb, var(--s) 70%, transparent) !important;
+  border-color: rgba(var(--w), .12) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(var(--w), .08) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  backdrop-filter: blur(24px) saturate(150%) !important;
+}
+
+/* Welcome card (kaliwa) */
+.org-shell.org-compact .org-greet { flex: 1 1 auto !important; min-width: 0 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 16px !important; padding: 9px 18px !important; border-radius: 16px !important; }
+.org-shell.org-compact .org-greet-text { min-width: 0 !important; }
+.org-shell.org-compact .org-greet h1 { font-size: 21px !important; font-weight: 800 !important; letter-spacing: -.02em !important; line-height: 1.2 !important; color: var(--tx) !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+.org-shell.org-compact .org-greet p { margin-top: 2px !important; font-size: 12.5px !important; color: var(--mu) !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+.org-shell.org-compact .org-greet-date::before { content: '•'; margin: 0 8px; }
+.org-shell.org-compact .org-greet-quote { flex: none !important; margin: 0 !important; padding-left: 10px !important; border-left: 2px solid var(--a) !important; font-style: italic !important; font-size: 12.5px !important; color: var(--al) !important; }
+
+/* Search pill + bilog na search button */
+.org-shell.org-compact .top.org-topbar .search { flex: 0 0 320px !important; width: 320px !important; height: 40px !important; padding: 0 4px 0 16px !important; gap: 8px !important; }
+.org-shell.org-compact .top.org-topbar .search input { font-size: 13px !important; }
+.org-shell.org-compact .search-go { width: 32px !important; height: 32px !important; flex: none !important; border-radius: 50% !important; display: grid !important; place-items: center !important; background: var(--a) !important; color: var(--on) !important; }
+.org-shell.org-compact .search-go svg { width: 16px !important; height: 16px !important; min-width: 16px !important; min-height: 16px !important; }
+
+/* Bilog na icon buttons */
+.org-shell.org-compact .org-nav-actions { margin-left: 0 !important; gap: 8px !important; }
+.org-shell.org-compact .org-action-btn,
+.org-shell.org-compact .org-action-btn.org-icon-btn { width: 40px !important; height: 40px !important; padding: 0 !important; border-radius: 50% !important; }
+.org-shell.org-compact .org-lang-code { display: none !important; }
+.org-shell.org-compact .org-user-btn { height: 40px !important; }
+.org-shell.org-compact .org-avatar { width: 32px !important; height: 32px !important; font-size: 12px !important; }
+
+/* ---------- Dashboard: 12-column bento grid ---------- */
+.org-shell.org-compact .page-dashboard {
+  display: grid !important; grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: var(--gap) !important; align-content: start !important;
+  width: 100% !important; max-width: 1760px !important; margin: 0 auto !important;
+}
+.org-shell.org-compact .page-dashboard > .stats {
+  grid-column: 1 / -1 !important;
+  display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: var(--gap) !important;
+}
+.org-shell.org-compact .page-dashboard > .b-chart    { grid-column: span 6 !important; }
+.org-shell.org-compact .page-dashboard > .b-activity { grid-column: span 3 !important; }
+.org-shell.org-compact .page-dashboard > .b-side     { grid-column: span 3 !important; display: flex !important; flex-direction: column !important; gap: var(--gap) !important; }
+.org-shell.org-compact .page-dashboard .b-side > .card:last-child { flex: 1 !important; }
+
+/* Cards */
+.org-shell.org-compact .page-dashboard .card { padding: 14px 16px !important; border-radius: 18px !important; margin: 0 !important; }
+.org-shell.org-compact .page-dashboard .card h3 { font-size: 15px !important; margin: 0 0 10px !important; padding-bottom: 8px !important; }
+.org-shell.org-compact .page-dashboard .card .sel { padding: 5px 10px !important; font-size: 12px !important; }
+.org-shell.org-compact .page-dashboard .card.b-chart { height: auto !important; min-height: 300px !important; display: flex !important; flex-direction: column !important; }
+.org-shell.org-compact .page-dashboard .b-chart .chart { flex: 1 !important; min-height: 200px !important; }
+.org-shell.org-compact .page-dashboard .b-actions > a { height: 44px !important; min-height: 0 !important; padding-block: 0 !important; margin: 0 0 6px !important; border-radius: 12px !important; }
+.org-shell.org-compact .page-dashboard .b-activity .ic,
+.org-shell.org-compact .page-dashboard .b-upcoming .ic { width: 36px !important; height: 36px !important; border-radius: 10px !important; flex: none !important; }
+
+/* Stat cards */
+.org-shell.org-compact .page-dashboard .stats > * { padding: 10px 14px !important; min-height: 0 !important; border-radius: 18px !important; gap: 12px !important; }
+.org-shell.org-compact .page-dashboard .stats .ic { width: 38px !important; height: 38px !important; border-radius: 12px !important; flex: none !important; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1280px) {
+  .org-shell.org-compact .page-dashboard > .b-chart    { grid-column: span 12 !important; }
+  .org-shell.org-compact .page-dashboard > .b-activity,
+  .org-shell.org-compact .page-dashboard > .b-side     { grid-column: span 6 !important; }
+  .org-shell.org-compact .org-greet-quote { display: none !important; }
+}
+@media (max-width: 1100px) {
+  .org-shell.org-compact .page-dashboard > .stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .org-shell.org-compact .top.org-topbar .search { flex: 1 1 200px !important; width: auto !important; }
+  .org-shell.org-compact .org-greet p { display: none !important; }
+}
+@media (max-width: 900px) {
+  .org-shell.org-compact .page-dashboard > .b-activity,
+  .org-shell.org-compact .page-dashboard > .b-side { grid-column: span 12 !important; }
+}
+@media (max-width: 700px) {
+  .org-shell.org-compact { --rail-offset: 8px; --rail-w: 52px; --gap: 10px; }
+  .org-shell.org-compact .org-greet { display: none !important; }
+}
+@media (max-width: 560px) {
+  .org-shell.org-compact .page-dashboard > .stats { grid-template-columns: 1fr !important; }
+}
+/* ============================================================
+   FINAL LAYOUT: TOPBAR SA KANAN & FULL WIDTH WELCOME CARD
+   ============================================================ */
+
+/* 1. I-unlock ang scroll ng buong page */
+html, body, #root {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-y: auto !important; 
+  overflow-x: hidden !important;
+}
+
+/* 2. MAIN CONTENT (Espasyo para sa sidebar) */
+.org-shell main.org-main {
+  margin-left: 104px !important; 
+  width: calc(100% - 120px) !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+  padding: 16px 24px 100px 0 !important;
+  box-sizing: border-box !important;
+  display: block !important;
+}
+
+/* 3. TOPBAR: Lahat ng actions (Search, Globe, Bell, Profile) nasa KANAN */
+.org-shell .top.org-topbar {
+  position: sticky !important;
+  top: 16px !important;
+  width: 100% !important;
+  height: 64px !important;
+  margin-bottom: 24px !important;
+  padding: 8px 16px !important;
+  border-radius: 99px !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important; /* 👈 ITUTULAK LAHAT SA KANAN */
+  gap: 12px !important;
+}
+
+/* Search Bar: Gawing saktong haba lang at dikit sa actions */
+.org-shell .top.org-topbar .search {
+  flex: 1 !important;
+  max-width: 600px !important; /* 👈 Para hindi umabot sa dulo */
+  height: 44px !important;
+  background: rgba(var(--w), 0.05) !important;
+  border-radius: 99px !important;
+  margin-right: auto !important; /* 👈 Itutulak ang search sa kaliwa, actions sa kanan */
+}
+
+/* Actions Container */
+.org-shell .org-nav-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* 4. WELCOME CARD: Pilitin maging 100% ang lapad (Para hindi mag-collapse) */
+.org-shell .page-dashboard .hero {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  flex: 1 1 100% !important; /* 👈 Pilitin ang buong lapad */
+  padding: 32px 40px !important;
+  border-radius: 24px !important;
+  box-sizing: border-box !important;
+  min-height: 160px !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Ayusin ang loob ng Welcome Card (Pahiga) */
+.org-shell .page-dashboard .hero-body {
+  display: flex !important;
+  flex-direction: row !important; 
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  gap: 24px !important;
+  z-index: 10 !important;
+}
+
+/* Ayusin ang Text sa loob ng Welcome Card */
+.org-shell .page-dashboard .hero-main {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.org-shell .page-dashboard .hero-main h1 {
+  font-size: 32px !important;
+  white-space: normal !important; 
+  line-height: 1.2 !important;
+  margin: 8px 0 !important;
+}
+
+/* Date at Quote sa Kanan ng Welcome Card */
+.org-shell .page-dashboard .hero-side {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  text-align: right !important;
+  flex-shrink: 0 !important;
+  gap: 8px !important;
+}
+
+/* 5. Ibalik ang maayos na Grid sa buong Dashboard */
+.org-shell .page-dashboard {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Stats Cards (Total Products, etc.) */
+.org-shell .page-dashboard .stats {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+
+/* Bento Grid sa ilalim (Sales, Activity, Quick Actions) */
+@media (min-width: 1100px) {
+  .org-shell .page-dashboard {
+    display: grid !important;
+    grid-template-columns: 2fr 1fr !important; /* Hatiin sa 2/3 at 1/3 */
+    gap: 20px !important;
+  }
+  .org-shell .page-dashboard .hero,
+  .org-shell .page-dashboard .stats {
+    grid-column: 1 / -1 !important; /* Full width ang Hero at Stats */
+  }
+  .org-shell .page-dashboard .b-chart {
+    grid-column: 1 / 2 !important; /* Sales Chart sa kaliwa */
+  }
+  .org-shell .page-dashboard .b-activity {
+    grid-column: 2 / 3 !important; /* Recent Activity sa kanan */
+  }
+  .org-shell .page-dashboard .b-side {
+    grid-column: 1 / -1 !important; /* Quick Actions at Upcoming sa ilalim */
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 20px !important;
+  }
+}
+/* ============================================================
+   FINAL TOPBAR: SEARCH BAR SA KANAN
+   ============================================================ */
+
+/* 1. Ang Topbar mismo */
+.org-shell .top.org-topbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important; /* 👈 Itutulak lahat sa kanan */
+  gap: 16px !important;
+  padding: 8px 16px !important;
+  width: 100% !important;
+  max-width: calc(100vw - 120px) !important;
+  box-sizing: border-box !important;
+}
+
+/* 2. Search Bar Container (Ang buong pill) */
+.org-shell .top.org-topbar .search {
+  display: flex !important;
+  align-items: center !important;
+  flex-direction: row !important; /* Pahiga */
+  width: 320px !important; /* 👈 Saktong haba lang */
+  max-width: 100% !important;
+  height: 44px !important;
+  padding: 0 4px 0 16px !important; /* Padding sa kaliwa, manipis sa kanan para sa button */
+  border-radius: 99px !important;
+  background: rgba(var(--w), 0.05) !important;
+  border: 1px solid rgba(var(--w), 0.1) !important;
+  margin-right: 0 !important; /* Alisin ang auto margin para dumikit sa actions */
+}
+
+/* 3. Input field sa loob ng search */
+.org-shell .top.org-topbar .search input {
+  flex: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: var(--tx) !important;
+  font-size: 14px !important;
+  padding: 0 !important;
+}
+
+/* 4. Yung asul na search button sa dulo */
+.org-shell .top.org-topbar .search .search-go {
+  display: grid !important;
+  place-items: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: var(--a) !important; /* 👈 Kulay asul */
+  color: #fff !important;
+  border: none !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.org-shell .top.org-topbar .search .search-go:hover {
+  transform: scale(1.05) !important;
+}
+
+/* Ayusin ang icon sa loob ng button */
+.org-shell .top.org-topbar .search .search-go svg {
+  width: 18px !important;
+  height: 18px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+/* 5. Siguraduhing hindi mag-o-overlap ang actions */
+.org-shell .org-nav-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+}
+/* ============================================================
+   VERTICAL HERO CARD LAYOUT (MAGKAKASUNOD PABABA)
+   ============================================================ */
+
+/* 1. Gawing pababa (column) ang buong loob ng card */
+.org-shell .page-dashboard div.hero > div.hero-body {
+  display: flex !important;
+  flex-direction: column !important; /* 👈 Pababa lahat */
+  align-items: flex-start !important; /* 👈 Dumikit sa kaliwa */
+  justify-content: flex-start !important;
+  width: 100% !important;
+  gap: 12px !important; /* Distansya ng bawat linya */
+}
+
+/* 2. Ayusin ang Kaliwa at Kanan containers para maging normal block na lang */
+.org-shell .page-dashboard div.hero > div.hero-body > div.hero-main,
+.org-shell .page-dashboard div.hero > div.hero-body > div.hero-side {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important; /* 👈 Lahat pumunta sa kaliwa */
+  text-align: left !important;
+  width: 100% !important;
+  flex: none !important;
+  gap: 8px !important;
+}
+
+/* 3. Ayusin ang mga text at icons para magkadikit sa kaliwa */
+.org-shell .page-dashboard div.hero > div.hero-body p.hero-line {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important; /* 👈 Pilitin sa kaliwa */
+  text-align: left !important;
+  margin: 0 !important;
+  gap: 8px !important;
+}
+
+/* 4. Ayusin ang Quote (Asul na linya) */
+.org-shell .page-dashboard div.hero > div.hero-body blockquote.quote {
+  display: block !important;
+  border-left: 3px solid var(--a) !important;
+  padding-left: 12px !important;
+  margin: 8px 0 0 0 !important;
+  text-align: left !important;
+  font-style: italic !important;
+  color: var(--al) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* 5. I-override ang font sizes */
+.org-shell .page-dashboard .hero-main h1 {
+  font-size: 32px !important;
+  margin: 0 0 4px 0 !important;
+}
+.org-shell .page-dashboard .hero-main small {
+  font-size: 14px !important;
+  color: var(--mu) !important;
+}
+/* ============================================================
+   LAYOUT FIX: GAYAHIN ANG "YOUR CART" STYLE (IMAGE 2)
+   ============================================================ */
+
+/* 1. Hero Container */
+.org-shell.org-compact .hero {
+  display: flex !important;
+  padding: 40px 48px !important; /* Mas malaking padding para maayos */
+  min-height: 220px !important;  /* Bigyan ng saktong taas */
+  border-radius: 24px !important;
+  align-items: center !important;
+}
+
+/* 2. Split Layout (Kaliwa at Kanan) */
+.org-shell.org-compact .hero-body {
+  display: flex !important;
+  flex-direction: row !important; 
+  justify-content: space-between !important; 
+  align-items: center !important; /* Pantay sa gitna */
+  width: 100% !important;
+  gap: 40px !important;
+}
+
+/* 3. KALIWA: Main Text */
+.org-shell.org-compact .hero-main {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  flex: 1 !important;
+}
+
+/* Pill Badge (Good Afternoon) */
+.org-shell.org-compact .greeting-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 16px !important;
+  border-radius: 99px !important;
+  background: rgba(var(--w), 0.05) !important;
+  border: 1px solid rgba(var(--w), 0.1) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--mu) !important;
+  margin-bottom: 20px !important;
+}
+
+/* Welcome back Title */
+.org-shell.org-compact .hero-main h1 {
+  font-size: 52px !important; /* 👈 MALAKI at malinaw basahin */
+  font-family: 'Georgia', 'Times New Roman', serif !important; /* 👈 Serif font gaya ng Your Cart */
+  font-weight: 700 !important;
+  line-height: 1.1 !important;
+  margin: 0 0 16px 0 !important;
+  color: var(--tx) !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* Description */
+.org-shell.org-compact .hero-desc {
+  font-size: 16px !important; /* 👈 Hindi masyadong maliit */
+  color: var(--sub) !important;
+  margin: 0 !important;
+}
+
+/* Date */
+.org-shell.org-compact .hero-date {
+  display: none !important; /* Itatago natin muna kung ayaw mo ng date sa tabi ng badge */
+}
+
+/* 4. KANAN: Quote */
+.org-shell.org-compact .hero-side {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important; 
+  justify-content: center !important;
+  text-align: right !important;
+  flex-shrink: 0 !important;
+  max-width: 300px !important;
+  /* Tinatago ang System Online */
+  & > .status-indicator { display: none !important; }
+}
+
+/* Quote Text */
+.org-shell.org-compact .hero-quote {
+  font-size: 20px !important; /* 👈 Mas malaki */
+  font-family: 'Georgia', 'Times New Roman', serif !important; /* 👈 Serif */
+  font-style: italic !important;
+  color: var(--al) !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}/* ============================================================
+   TANGGALIN ANG SCROLL HOVER EFFECT SA TOPBAR
+   ============================================================ */
+
+/* 1. I-override ang .is-scrolled para maging transparent at walang border */
+html body .org-shell.org-compact .top.org-topbar.is-scrolled {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important; /* Alisin ang lumalabas na padding */
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 2. Siguraduhing walang outline/border sa search bar kapag nag-focus/nag-scroll */
+.org-shell.org-compact .top.org-topbar .search,
+.org-shell.org-compact .top.org-topbar .search:focus-within {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: rgba(var(--w), 0.05) !important; /* Maintain lang ang transparent dark */
+}
+
+/* 3. Kung may lumalabas na asul na border sa buttons pag nag-focus */
+.org-shell.org-compact .org-action-btn:focus-visible,
+.org-shell.org-compact .org-user-btn:focus-visible,
+.org-shell.org-compact .search-go:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+/* ============================================================
+   🚨 FINAL LAYOUT FIX: PILITIN SA GILID (KALIWA AT KANAN) 🚨
+   ============================================================ */
+
+/* 1. Pilitin ang buong hero card na magkaroon ng saktong layout */
+html body .org-shell.org-compact .hero {
+  display: block !important; 
+  padding: 32px 48px !important;
+  min-height: 160px !important;
+  border-radius: 20px !important;
+}
+
+/* 2. Gawing grid (2 columns) ang hero-body */
+html body .org-shell.org-compact .hero .hero-body {
+  display: grid !important;
+  grid-template-columns: 1fr auto !important; /* Kaliwa: Kumuha ng space, Kanan: Sakto lang */
+  align-items: center !important;
+  width: 100% !important;
+  gap: 40px !important;
+  text-align: left !important; /* 👈 Reset sa kaliwa */
+}
+
+/* 3. KALIWA: Welcome text (Ipwesto sa KALIWA) */
+html body .org-shell.org-compact .hero .hero-main {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important; /* 👈 Dudulo sa KALIWA */
+  text-align: left !important;        /* 👈 Dudulo sa KALIWA */
+  width: 100% !important;
+}
+
+/* 4. KANAN: Quote at Status (Ipwesto sa KANAN) */
+html body .org-shell.org-compact .hero .hero-side {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important; /* 👈 Dudulo sa KANAN */
+  text-align: right !important;     /* 👈 Dudulo sa KANAN */
+  justify-content: center !important;
+  width: max-content !important;
+  margin-left: auto !important;     /* Isusulong sa dulo */
+}
+
+/* 5. I-override ang mga text alignment na galing sa lumang code */
+html body .org-shell.org-compact .hero .hero-main h1,
+html body .org-shell.org-compact .hero .hero-main .hero-desc,
+html body .org-shell.org-compact .hero .greeting-row {
+  text-align: left !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+}
+
+/* 6. System Online (Kanan) */
+html body .org-shell.org-compact .hero .status-indicator {
+  display: flex !important;
+  justify-content: flex-end !important;
+  margin-bottom: 12px !important;
+}
+
+/* 7. Quote (Kanan) */
+html body .org-shell.org-compact .hero .hero-quote {
+  text-align: right !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+/* ============================================================
+   EXACT FIX: PILITIN MAGKATABI NANG HINDI NAWALA ANG KALIWA
+   ============================================================ */
+
+/* 1. Gawing malinaw ang flex layout ng hero-body */
+html body .org-shell.org-compact .hero .hero-body {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+  gap: 24px !important;
+}
+
+/* 2. Bigyan ng saktong lapad ang KALIWA para hindi mag-collapse */
+html body .org-shell.org-compact .hero .hero-main {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+  flex: 1 1 65% !important; /* Sakupin ang karamihan ng space */
+  min-width: 0 !important;
+}
+
+/* 3. Bigyan ng saktong lapad ang KANAN */
+html body .org-shell.org-compact .hero .hero-side {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  text-align: right !important;
+  flex: 0 0 auto !important; 
+  max-width: 320px !important;
+}
+
+/* 4. Ayusin ang loob ng KANAN */
+html body .org-shell.org-compact .hero .hero-side .status-indicator {
+  display: flex !important;
+  justify-content: flex-end !important;
+  width: 100% !important;
+  margin-bottom: 8px !important;
+}
+
+html body .org-shell.org-compact .hero .hero-side .hero-quote {
+  text-align: right !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+/* ============================================================
+   🚨 THE ABSOLUTE FINAL FIX: ILAGAY SA PINAKADULO 🚨
+   ============================================================ */
+
+/* 1. Pilitin ang hero-body na maging flex container */
+html body .org-shell.org-compact .hero .hero-body {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important; 
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+/* 2. KALIWA: Welcome Text */
+html body .org-shell.org-compact .hero .hero-main {
+  flex: 1 !important; /* Sakupin ang natitirang espasyo */
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+}
+
+/* 3. KANAN: Isagad sa kanan */
+html body .org-shell.org-compact .hero .hero-side {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important; /* Dudulo sa kanan */
+  text-align: right !important;     /* Dudulo sa kanan */
+  justify-content: center !important;
+  
+  /* 👈 ITO ANG MGA SECRETO PARA DUMULO SA GILID */
+  margin-left: auto !important;     /* Itutulak sa pinakadulo */
+  flex: 0 0 auto !important;        /* Wag hayaang mag-shrink */
+  width: auto !important;           /* Tanggalin ang lumang width */
+  max-width: none !important;       /* Tanggalin ang lumang max-width */
+}
+
+/* 4. System Online */
+html body .org-shell.org-compact .hero .hero-side .status-indicator {
+  display: flex !important;
+  justify-content: flex-end !important;
+  width: 100% !important;
+  margin-bottom: 8px !important;
+}
+
+/* 5. Quote */
+html body .org-shell.org-compact .hero .hero-side .hero-quote {
+  display: block !important;
+  text-align: right !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+/* ============================================================
+   FADE-IN ANIMATION PARA SA MGA CARDS
+   ============================================================ */
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* I-apply natin sa lahat ng direct children ng page-dashboard */
+.org-shell.org-compact .page-dashboard > * {
+  animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Maglagay ng stagger effect (sunod-sunod ang labas) */
+.org-shell.org-compact .page-dashboard > *:nth-child(1) { animation-delay: 0.0s; }
+.org-shell.org-compact .page-dashboard > *:nth-child(2) { animation-delay: 0.1s; }
+.org-shell.org-compact .page-dashboard > *:nth-child(3) { animation-delay: 0.2s; }
+.org-shell.org-compact .page-dashboard > *:nth-child(4) { animation-delay: 0.3s; }
+.org-shell.org-compact .page-dashboard > *:nth-child(5) { animation-delay: 0.4s; }
+/* ============================================================
+   ANIMATIONS PARA SA PRODUCTS & PRODUCT DETAILS PAGE
+   ============================================================ */
+
+/* 1. Fade-in at Slide-up Animation Keyframes */
+@keyframes pageFadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 2. I-apply sa Products Page (Header at Stats) */
+.org-shell.org-compact .page-products > .ph,
+.org-shell.org-compact .page-products > .stats {
+  animation: pageFadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Sunod-sunod na labas (Stagger) */
+.org-shell.org-compact .page-products > .ph { animation-delay: 0.0s; }
+.org-shell.org-compact .page-products > .stats { animation-delay: 0.1s; }
+
+/* 3. I-apply sa bawat Product Card (Sunod-sunod ang fade-in) */
+.org-shell.org-compact .page-products .pgrid > * {
+  animation: pageFadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Gumawa ng stagger effect para sa bawat card (1 to 12) */
+.org-shell.org-compact .page-products .pgrid > *:nth-child(1) { animation-delay: 0.15s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(2) { animation-delay: 0.20s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(3) { animation-delay: 0.25s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(4) { animation-delay: 0.30s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(5) { animation-delay: 0.35s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(6) { animation-delay: 0.40s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(7) { animation-delay: 0.45s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(8) { animation-delay: 0.50s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(9) { animation-delay: 0.55s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(10) { animation-delay: 0.60s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(11) { animation-delay: 0.65s; }
+.org-shell.org-compact .page-products .pgrid > *:nth-child(12) { animation-delay: 0.70s; }
+
+/* 4. I-apply sa Product Details Page (Image at Info) */
+.org-shell.org-compact .pd-page .pd-image-box {
+  animation: pageFadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.0s;
+}
+
+.org-shell.org-compact .pd-page .pd-info-box {
+  animation: pageFadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.1s; /* Medyo mas huli ng konti kaysa sa image */
+}
+/* ============================================================
+   TRUE FLOATING LAYOUT (BASE SA INSPO FILE)
+   ============================================================ */
+
+/* 1. Sidebar: Gawing "floating" na may malaking agwat sa gilid */
+html body .org-shell.org-compact .org-rail {
+  top: 24px !important;
+  bottom: 24px !important;
+  left: 24px !important;
+  height: calc(100vh - 48px) !important; /* Bawas sa taas at baba */
+  border-radius: 24px !important; /* Mas malambot na corners */
+}
+
+/* 2. Main Content: Bigyan ng malaking margin sa kaliwa para umiwas sa sidebar */
+html body .org-shell.org-compact .org-main {
+  margin-left: 136px !important; /* 24px (left) + 72px (sidebar) + 40px (gap) */
+  padding: 32px 48px 64px 0 !important; /* Malaking padding sa taas at kanan */
+}
+
+/* 3. Gawing saktong gitna at may max-width ang buong page */
+html body .org-shell.org-compact .page-dashboard {
+  width: 100% !important;
+  max-width: 1500px !important;
+  margin: 0 auto !important; 
+  padding-right: 0 !important;
+}
+
+/* 4. Gawing mas malaki ang agwat ng mga cards (Grid Gap) */
+html body .org-shell.org-compact .page-dashboard {
+  gap: 24px !important;
+}
+
+/* 5. I-override ang lumang margin sa mobile */
+@media (max-width: 900px) {
+  html body .org-shell.org-compact .org-rail {
+    top: 16px !important;
+    bottom: 16px !important;
+    left: 16px !important;
+  }
+  html body .org-shell.org-compact .org-main {
+    margin-left: 112px !important; /* 16px + 64px + 32px */
+    padding: 16px 24px 48px 0 !important;
+  }
+}
+/* ============================================================
+   FINAL INSPO LAYOUT: MALUWAG NA MARGIN, FLOATING SIDEBAR
+   ============================================================ */
+
+/* 1. Sidebar: Floating, naka-pwesto sa kaliwa, tumitigil sa baba */
+html body .org-shell .floating-sidebar {
+  position: fixed !important;
+  top: 32px !important; /* Pantay sa taas ng Welcome Card */
+  transform: none !important; /* Tinatanggal ang center transform */
+  left: 48px !important; /* Malaking margin sa kaliwa */
+  
+  height: calc(100vh - 450px) !important; /* 👈 Humihinto sa baba (bawas 450px) */
+  min-height: 380px !important; 
+  
+  width: 72px !important;
+  padding: 16px 10px !important;
+  border-radius: 24px !important;
+  
+  /* Glass effect */
+  background: linear-gradient(145deg, rgba(var(--w), 0.08), rgba(var(--w), 0.02)) !important;
+  border: 1px solid rgba(var(--w), 0.12) !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(var(--w), 0.15) !important;
+  
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 100000 !important;
+  overflow: hidden !important;
+}
+
+/* 2. Kapag hinover, bahagyang lalaki */
+html body .org-shell .floating-sidebar:hover {
+  width: 240px !important;
+}
+
+/* 3. Main Content: Malaking margin sa kaliwa at kanan */
+html body .org-shell .org-main {
+  margin-left: 140px !important; /* Espasyo mula sa sidebar */
+  margin-right: 140px !important; /* Malaking espasyo sa kanan */
+  padding: 32px 0 80px 0 !important;
+  max-width: 1300px !important; /* Limitado ang lapad para compact */
+  margin: 0 auto !important; /* Kinokontrol na nasa gitna */
+  
+  /* I-override ang lumang margin-left */
+  margin-left: 140px !important; 
+}
+
+/* 4. I-center at gawing compact ang Topbar at Dashboard */
+html body .org-shell .top.org-topbar,
+html body .org-shell .page-dashboard,
+html body .org-shell .page-products {
+  width: 100% !important;
+  max-width: 1300px !important;
+  margin: 0 auto !important;
+}
+
+/* 5. Responsive: Bawasan ang margin sa mas maliit na screen */
+@media (max-width: 1200px) {
+  html body .org-shell .org-main {
+    margin-left: 120px !important;
+    margin-right: 40px !important;
+  }
+  html body .org-shell .floating-sidebar {
+    left: 24px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  html body .org-shell .floating-sidebar {
+    left: 16px !important;
+    top: 16px !important;
+    height: calc(100vh - 300px) !important;
+  }
+  html body .org-shell .org-main {
+    margin-left: 100px !important;
+    margin-right: 16px !important;
+    padding: 16px 0 48px 0 !important;
+  }
+}
+/* ============================================================
+   ISAGAD SA KANAN (BINALIK ANG LAPAD)
+   ============================================================ */
+
+html body .org-shell.org-compact .org-main {
+  /* Layo mula sa sidebar sa kaliwa */
+  margin-left: 120px !important; 
+  
+  /* 👈 ITO ANG MAGPAPADULO SA KANAN: Bawasan ang margin-right */
+  margin-right: 24px !important; /* 24px lang ang layo sa dulo ng screen */
+  
+  /* I-override ang lumang code na nagpapa-center o nagpapa-liit */
+  max-width: none !important; 
+  margin-top: 32px !important;
+  padding: 32px 0 80px 0 !important;
+}
+
+/* Siguraduhing hindi lumiit ang loob ng page */
+html body .org-shell.org-compact .page-dashboard,
+html body .org-shell.org-compact .page-products {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+/* ============================================================
+   INSPO APPROACH: SAGAD SA KANAN, SIDEBAR SA GILID
+   ============================================================ */
+
+/* 1. Sidebar: Nakadikit sa gilid (hindi floating sa gitna) */
+html body .org-shell.org-compact .floating-sidebar {
+  position: fixed !important;
+  top: 32px !important; 
+  bottom: 32px !important; /* Abot sa baba, pantay sa content */
+  transform: none !important; /* Alisin ang center alignment */
+  left: 24px !important; /* Saktong layo sa gilid */
+  
+  height: auto !important;
+  width: 72px !important;
+  padding: 16px 10px !important;
+  border-radius: 24px !important;
+  
+  background: linear-gradient(145deg, rgba(var(--w), 0.08), rgba(var(--w), 0.02)) !important;
+  border: 1px solid rgba(var(--w), 0.12) !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(var(--w), 0.15) !important;
+  
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 100000 !important;
+  overflow: hidden !important;
+}
+
+/* 2. Main Content: Isagad sa kanan, saktong layo sa sidebar */
+html body .org-shell.org-compact .org-main {
+  margin-left: 116px !important; /* 24px (left) + 72px (sidebar) + 20px (gap) */
+  margin-right: 32px !important; /* 👈 Maliit lang na espasyo sa kanan, para sagad */
+  
+  max-width: none !important; /* Tanggalin ang limit */
+  margin-top: 32px !important;
+  padding: 0 0 80px 0 !important;
+}
+
+/* 3. Header (Title at Search bar): Gawing magkatabi */
+html body .org-shell.org-compact .ph {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 24px !important;
+}
+
+/* 4. Cards Grid: Gawing 4 columns para pantay-pantay */
+html body .org-shell.org-compact .page-products .pgrid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important; /* 👈 4 columns */
+  gap: 20px !important;
+  width: 100% !important;
+}
+
+/* 5. Stats Cards: 4 columns din */
+html body .org-shell.org-compact .page-products .stats {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 20px !important;
+}
+
+/* 6. Responsive adjustments (Para hindi mabasag sa maliit na screen) */
+@media (max-width: 1200px) {
+  html body .org-shell.org-compact .page-products .pgrid,
+  html body .org-shell.org-compact .page-products .stats {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html body .org-shell.org-compact .page-products .pgrid,
+  html body .org-shell.org-compact .page-products .stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 700px) {
+  html body .org-shell.org-compact .org-main {
+    margin-left: 100px !important;
+    margin-right: 16px !important;
+  }
+  html body .org-shell.org-compact .floating-sidebar {
+    left: 16px !important;
+  }
+  html body .org-shell.org-compact .page-products .pgrid,
+  html body .org-shell.org-compact .page-products .stats {
+    grid-template-columns: 1fr !important;
+  }
+}
+/* ============================================================
+   ONTING MARGIN SA KANAN (SAGAD NA MAY KONTING ESPASYO)
+   ============================================================ */
+
+html body .org-shell.org-compact .org-main {
+  /* Layo mula sa sidebar sa kaliwa */
+  margin-left: 116px !important; 
+  
+  /* 👈 "ONTI" LANG NA MARGIN SA KANAN (dating 250px, naging 16px na lang) */
+  margin-right: 16px !important; 
+  
+  max-width: none !important; /* Tanggalin ang limit */
+  margin-top: 32px !important;
+  padding: 0 0 80px 0 !important;
+}
+
+/* Siguraduhing sagad ang loob ng grid sa dulo */
+html body .org-shell.org-compact .page-dashboard,
+html body .org-shell.org-compact .page-products {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+/* ============================================================
+   FINAL LAYOUT: CENTERED MAIN CONTENT (20PX MARGINS)
+   ============================================================ */
+
+/* 1. I-set ang org-main para maging centered at may margin */
+html body .org-shell.org-compact .org-main {
+  /* 
+    👈 ITO ANG SECRETO: 
+    margin-left: auto at margin-right: auto ang nagtutulak sa gitna.
+    Pero para hindi ito mag-overlap sa sidebar, may specific na padding/margin tayo.
+  */
+  margin-left: 116px !important; /* Saktong layo mula sa sidebar (24px + 72px + 20px) */
+  margin-right: 20px !important; /* 👈 20px na margin sa kanan */
+  
+  /* I-override ang lumang margin na nagpapa-center o nagpapa-liit */
+  max-width: none !important;
+  padding: 32px 0 80px 0 !important;
+  width: auto !important;
+}
+
+/* 2. I-center ang laman (Topbar, Dashboard, Products) */
+html body .org-shell.org-compact .page-dashboard,
+html body .org-shell.org-compact .page-products,
+html body .org-shell.org-compact .page-settings,
+html body .org-shell.org-compact .page-notifications,
+html body .org-shell.org-compact .page-orders {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 auto !important; /* I-center */
+}
+
+/* 3. Siguraduhing nasa gitna din ang Topbar */
+html body .org-shell.org-compact .top.org-topbar {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+/* ============================================================
+   PINAKATAAS NA TOPBAR & CONTENT (WALANG GAP SA TAAS)
+   ============================================================ */
+
+/* 1. I-reset ang top margin/padding ng main container para sumagad sa taas */
+html body .org-shell.org-compact .org-main {
+  /* Alisin ang anumang padding sa taas na nagdudulot ng gap */
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+/* 2. I-pwesto ang topbar sa pinakataas (16px mula sa screen edge) */
+html body .org-shell.org-compact .top.org-topbar {
+  position: sticky !important;
+  top: 16px !important; /* 👈 16px lang na layo sa pinakataas */
+  margin-top: 0 !important;
+  margin-bottom: 20px !important; /* Distansya papunta sa Welcome Card */
+}
+
+/* 3. I-override ang lumang padding sa page wrapper kung meron */
+html body .org-shell.org-compact .page-dashboard,
+html body .org-shell.org-compact .page-products,
+html body .org-shell.org-compact .page-settings {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+/* ============================================================
+   EXACT LAYOUT PARA MAGING KATULAD NG IMAGE 2
+   ============================================================ */
+
+/* 1. I-reset ang Scroll at Buong Page */
+html, body, #root {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: auto !important;
+  overflow-y: auto !important;
+}
+
+/* 2. I-center ang Main Container at bigyan ng malaking margin sa magkabilang gilid */
+html body .org-shell.org-compact .org-main {
+  /* 
+    👈 Ito ang mag-uusog sa buong panel pabalik sa gitna.
+    (116px sa kaliwa para umiwas sa sidebar, 60px sa kanan para may espasyo)
+  */
+  margin-left: 120px !important; 
+  margin-right: 40px !important; 
+  
+  /* I-adjust ang padding para sumagad sa taas ang topbar */
+  padding: 16px 0 60px 0 !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* 3. Topbar: Iurong pabalik sa gitna, pantay sa mga cards */
+html body .org-shell.org-compact .top.org-topbar {
+  position: sticky !important;
+  top: 16px !important; /* Saktong dikit sa taas */
+  width: 100% !important;
+  margin-bottom: 24px !important; /* Espasyo bago mag-umpisa ang Welcome Card */
+  left: auto !important;
+  right: auto !important;
+}
+
+/* 4. Gawing gitna at iurong pabalik ang lahat ng pages (Dashboard, Products, etc.) */
+html body .org-shell.org-compact .page-dashboard,
+html body .org-shell.org-compact .page-products,
+html body .org-shell.org-compact .page-settings,
+html body .org-shell.org-compact .page-orders {
+  width: 100% !important;
+  max-width: 1600px !important; /* 👈 Limitahan ang lapad para hindi sumagad */
+  margin: 0 auto !important;    /* 👈 I-center sa screen */
+  padding: 0 !important;
+}
+
+/* 5. Siguraduhing magkakatabi at pantay-pantay ang mga Cards (gaya ng reference) */
+html body .org-shell.org-compact .page-dashboard .stats,
+html body .org-shell.org-compact .page-products .stats {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+
+/* Responsive: Bawasan ang margin kapag tablet/mobile */
+@media (max-width: 1024px) {
+  html body .org-shell.org-compact .org-main {
+    margin-right: 16px !important; /* Mas maliit na kanan para may espasyo pa rin */
+  }
+}
+/* ============================================================
+   TOPBAR LANG: IURONG SA KANAN PARA PANTAPAT SA CARDS
+   ============================================================ */
+
+html body .org-shell.org-compact .top.org-topbar {
+  /* 👈 I-override ang lumang margin at lapad */
+  width: 100% !important;
+  max-width: 100% !important;
+  
+  /* 👈 Siguraduhing sagad sa dulo ng main container */
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  
+  /* 👈 Kung may lumalabas na padding, alisin */
+  box-sizing: border-box !important;
+  left: auto !important;
+  right: auto !important;
+}
+
+/* 👈 Siguraduhing ang main container ay may tamang reference para sumagad ang topbar */
+html body .org-shell.org-compact .org-main {
+  margin-right: 20px !important; /* Panatilihin ang 20px margin ng buong content */
+  padding-right: 0 !important;  /* Alisin ang anumang sobrang padding sa loob */
+}
+/* ============================================================
+   🎯 CLAYMORPHISM OVERRIDE (PRODUCT CARDS & BUTTONS)
+   ============================================================ */
+
+/* 1. Product Cards (Gawing Puffy at Soft) */
+html body[data-ui="clay"] .org-shell .page-products .pc,
+html body[data-ui="clay"] .org-shell .pc {
+  /* 👈 Solid background base sa theme (walang blur) */
+  background: var(--theme-surface-2) !important;
+  background-color: var(--theme-surface-2) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  
+  /* 👈 Clay Border (Manipis, malambot) */
+  border: 1px solid color-mix(in srgb, var(--theme-surface-2) 80%, #fff) !important;
+  border-radius: 24px !important; /* Mas malambot na corners */
+  
+  /* 👈 CLAY SHADOWS: Puting highlight sa taas/kaliwa, Itim na shadow sa baba/kanan */
+  box-shadow: 
+    -4px -4px 10px rgba(255, 255, 255, 0.05),
+    6px 6px 16px rgba(0, 0, 0, 0.3),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Light Mode Clay Shadows */
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .page-products .pc,
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .pc {
+  box-shadow: 
+    -6px -6px 12px rgba(255, 255, 255, 0.8),
+    6px 6px 16px rgba(0, 0, 0, 0.1),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* 2. Size Boxes (Gawing Naka-umbok) */
+html body[data-ui="clay"] .org-shell .page-products .size-box {
+  background: var(--theme-surface) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 
+    -2px -2px 5px rgba(255, 255, 255, 0.05),
+    2px 2px 5px rgba(0, 0, 0, 0.3),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.1) !important;
+}
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .page-products .size-box {
+  box-shadow: 
+    -3px -3px 6px rgba(255, 255, 255, 0.8),
+    3px 3px 6px rgba(0, 0, 0, 0.08),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 3. Manage Stock Button (Gawing Puffy Button) */
+html body[data-ui="clay"] .org-shell .page-products .manage-btn {
+  background: var(--theme-surface-2) !important;
+  color: var(--theme-text) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 16px !important;
+  box-shadow: 
+    -3px -3px 8px rgba(255, 255, 255, 0.05),
+    4px 4px 10px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Kapag pinindot (Naka-lubog) */
+html body[data-ui="clay"] .org-shell .page-products .manage-btn:active {
+  box-shadow: 
+    inset 3px 3px 8px rgba(0, 0, 0, 0.4),
+    inset -3px -3px 8px rgba(255, 255, 255, 0.05) !important;
+  transform: scale(0.98) !important;
+}
+
+/* 4. Status Badges (In Stock, Out of Stock) */
+html body[data-ui="clay"] .org-shell .page-products .stock-badge {
+  background: var(--theme-surface) !important;
+  box-shadow: 
+    -2px -2px 6px rgba(255, 255, 255, 0.05),
+    2px 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+/* ============================================================
+   🎯 ULTIMATE CLAYMORPHISM IMPLEMENTATION (10 THEMES)
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. GLOBAL CLAY BASE (Cards, Panels, Inputs)
+   ------------------------------------------------------------ */
+html body[data-ui="clay"] .org-shell .glass,
+html body[data-ui="clay"] .org-shell .card,
+html body[data-ui="clay"] .org-shell .pc,
+html body[data-ui="clay"] .org-shell .hero,
+html body[data-ui="clay"] .org-shell .stats > *,
+html body[data-ui="clay"] .org-shell .flt,
+html body[data-ui="clay"] .org-shell .settings-section,
+html body[data-ui="clay"] .org-shell .in {
+  /* Solid background base sa theme */
+  background: var(--theme-surface-2) !important;
+  background-color: var(--theme-surface-2) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  
+  /* Clay Border (Manipis, malambot) */
+  border: 1px solid color-mix(in srgb, var(--theme-surface-2) 80%, #fff) !important;
+  border-radius: 24px !important;
+  
+  /* Clay Shadows (Highlight sa taas/kaliwa, Shadow sa baba/kanan) */
+  box-shadow: 
+    -4px -4px 10px rgba(255, 255, 255, 0.05),
+    6px 6px 16px rgba(0, 0, 0, 0.3),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Light Mode Adjustments (Mas soft at puti ang highlight) */
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .glass,
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .card,
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .pc,
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .hero,
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .stats > *,
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .in {
+  background: var(--theme-surface) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 
+    -6px -6px 12px rgba(255, 255, 255, 0.8),
+    6px 6px 16px rgba(0, 0, 0, 0.1),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ------------------------------------------------------------
+   2. PRODUCT CARDS SPECIFIC (Size Boxes, Buttons)
+   ------------------------------------------------------------ */
+html body[data-ui="clay"] .org-shell .page-products .size-box {
+  background: var(--theme-surface) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 
+    -2px -2px 5px rgba(255, 255, 255, 0.05),
+    2px 2px 5px rgba(0, 0, 0, 0.3),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.1) !important;
+}
+
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .page-products .size-box {
+  box-shadow: 
+    -3px -3px 6px rgba(255, 255, 255, 0.8),
+    3px 3px 6px rgba(0, 0, 0, 0.08),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.5) !important;
+}
+
+html body[data-ui="clay"] .org-shell .page-products .manage-btn {
+  background: var(--theme-surface-2) !important;
+  color: var(--theme-text) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 16px !important;
+  box-shadow: 
+    -3px -3px 8px rgba(255, 255, 255, 0.05),
+    4px 4px 10px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.2s ease !important;
+}
+
+html body[data-ui="clay"] .org-shell .page-products .manage-btn:active {
+  box-shadow: 
+    inset 3px 3px 8px rgba(0, 0, 0, 0.4),
+    inset -3px -3px 8px rgba(255, 255, 255, 0.05) !important;
+  transform: scale(0.98) !important;
+}
+
+html body[data-ui="clay"] .org-shell .page-products .stock-badge {
+  background: var(--theme-surface) !important;
+  box-shadow: 
+    -2px -2px 6px rgba(255, 255, 255, 0.05),
+    2px 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ------------------------------------------------------------
+   3. BUTTONS & INPUTS (Clay Style)
+   ------------------------------------------------------------ */
+html body[data-ui="clay"] .org-shell .btn {
+  background: var(--theme-primary) !important;
+  color: var(--theme-on-primary) !important;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 80%, #fff) !important;
+  border-radius: 16px !important;
+  box-shadow: 
+    -3px -3px 8px rgba(255, 255, 255, 0.1),
+    4px 4px 10px rgba(0, 0, 0, 0.3),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.3) !important;
+  font-weight: 700 !important;
+}
+
+html body[data-ui="clay"] .org-shell .btn:active {
+  box-shadow: 
+    inset 4px 4px 8px rgba(0, 0, 0, 0.3),
+    inset -4px -4px 8px rgba(255, 255, 255, 0.1) !important;
+  transform: scale(0.97) !important;
+}
+
+html body[data-ui="clay"] .org-shell .in,
+html body[data-ui="clay"] .org-shell input,
+html body[data-ui="clay"] .org-shell select {
+  background: var(--theme-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px !important;
+  box-shadow: 
+    inset 3px 3px 6px rgba(0, 0, 0, 0.3),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.05) !important;
+}
+
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell .in,
+html body[data-theme-mode="light"][data-ui="clay"] .org-shell input {
+  box-shadow: 
+    inset 3px 3px 6px rgba(0, 0, 0, 0.08),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.9) !important;
+}
+
+/* ------------------------------------------------------------
+   4. SPECIFIC THEME OVERRIDES (Ensuring Clay works on all 10)
+   ------------------------------------------------------------ */
+/* Midnight, Plum, Forest, Matte, Charcoal (Dark themes) */
+html body[data-ui="clay"][data-theme-mode="dark"] .org-shell .glass,
+html body[data-ui="clay"][data-theme-mode="dark"] .org-shell .card {
+  background: var(--theme-surface-2) !important;
+}
+
+/* Cream, White, Beige, Gray, Blush (Light themes) */
+html body[data-ui="clay"][data-theme-mode="light"] .org-shell .glass,
+html body[data-ui="clay"][data-theme-mode="light"] .org-shell .card {
+  background: var(--theme-surface) !important;
+}
+/* ============================================================
+   🎯 TOPBAR & SIDEBAR THEME MATCH (ALL 10 THEMES)
+   ============================================================ */
+
+/* 1. Search Button (Yung bilog sa tabi ng search bar) */
+html body .org-shell.org-compact .top.org-topbar .search-go,
+html body .org-shell.org-compact .top.org-topbar .search button {
+  background: var(--theme-primary) !important;
+  color: var(--theme-on-primary) !important;
+  border: 1px solid var(--theme-primary) !important;
+  box-shadow: 0 4px 10px rgba(var(--theme-primary-rgb), 0.3) !important;
+}
+html body .org-shell.org-compact .top.org-topbar .search-go svg {
+  stroke: var(--theme-on-primary) !important;
+}
+
+/* 2. User Avatar (Yung "CV" sa taas at sa sidebar) */
+html body .org-shell.org-compact .top.org-topbar .org-avatar,
+html body .org-shell.org-compact .floating-sidebar .av {
+  background: var(--theme-primary) !important;
+  color: var(--theme-on-primary) !important;
+  box-shadow: 0 4px 10px rgba(var(--theme-primary-rgb), 0.3) !important;
+}
+
+/* 3. Notification Badge (Yung pulang bilog sa bell) */
+html body .org-shell.org-compact .org-badge {
+  background: var(--theme-danger) !important;
+  color: var(--theme-on-danger) !important; /* Contrast sa pula */
+  border: 2px solid var(--theme-bg) !important;
+}
+
+/* 4. Sidebar Active State (Home, Products, etc.) */
+html body .org-shell.org-compact .floating-sidebar .nav-icon.active,
+html body .org-shell.org-compact .floating-sidebar .nav-icon.on,
+html body .org-shell.org-compact .floating-sidebar .nav-icon[aria-current="page"] {
+  background: var(--theme-primary) !important;
+  color: var(--theme-on-primary) !important;
+  box-shadow: 0 4px 12px rgba(var(--theme-primary-rgb), 0.3) !important;
+}
+html body .org-shell.org-compact .floating-sidebar .nav-icon.active svg {
+  stroke: var(--theme-on-primary) !important;
+}
+
+/* 5. Buttons (Clear All, All, etc.) */
+html body .org-shell.org-compact .btn,
+html body .org-shell.org-compact .chip.on,
+html body .org-shell.org-compact .chip.active,
+html body .org-shell.org-compact .chip.is-active {
+  background: var(--theme-primary) !important;
+  color: var(--theme-on-primary) !important;
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 4px 10px rgba(var(--theme-primary-rgb), 0.3) !important;
+}
+/* ============================================================
+   🎯 GLOBAL TEXT VISIBILITY FIX (LIGHT & DARK MODES)
+   ============================================================ */
+
+/* 1. Para sa LIGHT THEME: Pilitin ang text na maging maitim/dark */
+html[data-theme-mode="light"] body .org-shell h1,
+html[data-theme-mode="light"] body .org-shell h2,
+html[data-theme-mode="light"] body .org-shell h3,
+html[data-theme-mode="light"] body .org-shell h4,
+html[data-theme-mode="light"] body .org-shell p,
+html[data-theme-mode="light"] body .org-shell span,
+html[data-theme-mode="light"] body .org-shell b,
+html[data-theme-mode="light"] body .org-shell strong,
+html[data-theme-mode="light"] body .org-shell td,
+html[data-theme-mode="light"] body .org-shell th,
+html[data-theme-mode="light"] body .org-shell label,
+html[data-theme-mode="light"] body .org-shell .p-title,
+html[data-theme-mode="light"] body .org-shell .sp-col small,
+html[data-theme-mode="light"] body .org-shell .card h3 {
+  color: var(--theme-text) !important; /* 👈 Kulay itim/dark base sa theme */
+  -webkit-text-fill-color: var(--theme-text) !important;
+}
+
+/* Para sa mas maputlang text (subtitles) */
+html[data-theme-mode="light"] body .org-shell small,
+html[data-theme-mode="light"] body .org-shell .ph p,
+html[data-theme-mode="light"] body .org-shell .hero-desc,
+html[data-theme-mode="light"] body .org-shell .sp-col small {
+  color: var(--theme-text-muted) !important;
+  -webkit-text-fill-color: var(--theme-text-muted) !important;
+}
+
+/* 2. Para sa DARK THEME: Pilitin ang text na maging puti/light */
+html[data-theme-mode="dark"] body .org-shell h1,
+html[data-theme-mode="dark"] body .org-shell h2,
+html[data-theme-mode="dark"] body .org-shell h3,
+html[data-theme-mode="dark"] body .org-shell h4,
+html[data-theme-mode="dark"] body .org-shell p,
+html[data-theme-mode="dark"] body .org-shell span,
+html[data-theme-mode="dark"] body .org-shell b,
+html[data-theme-mode="dark"] body .org-shell strong,
+html[data-theme-mode="dark"] body .org-shell td,
+html[data-theme-mode="dark"] body .org-shell th,
+html[data-theme-mode="dark"] body .org-shell label,
+html[data-theme-mode="dark"] body .org-shell .p-title {
+  color: var(--theme-text) !important; /* 👈 Kulay puti/light base sa theme */
+  -webkit-text-fill-color: var(--theme-text) !important;
+}
+
+/* 3. Ayusin ang Order Management text (specific) */
+html body .org-shell .page-orders .card,
+html body .org-shell .page-orders .od-card {
+  color: var(--theme-text) !important;
+}
+/* ============================================================
+   🎯 QUICK ACTIONS THEME MATCH (VISIBLE SA LAHAT NG 10 THEMES)
+   ============================================================ */
+
+/* 1. Quick Action Buttons (Base) */
+html body .org-shell .page-dashboard .b-actions a,
+html body .org-shell .page-dashboard .b-actions .qa,
+html body .org-shell .page-dashboard .b-actions button {
+  /* 👈 Gumamit ng theme surface para may solid background */
+  background: var(--theme-surface-2) !important;
+  background-color: var(--theme-surface-2) !important;
+  
+  /* 👈 Text color base sa theme (Itim sa light, Puti sa dark) */
+  color: var(--theme-text) !important;
+  -webkit-text-fill-color: var(--theme-text) !important;
+  
+  /* Border at shadow base sa theme */
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+  
+  /* Transition para sa hover */
+  transition: all 0.2s ease !important;
+}
+
+/* 2. Quick Action Hover State */
+html body .org-shell .page-dashboard .b-actions a:hover,
+html body .org-shell .page-dashboard .b-actions .qa:hover,
+html body .org-shell .page-dashboard .b-actions button:hover {
+  /* 👈 Pag-hover, gawing primary color ng theme */
+  background: var(--theme-primary) !important;
+  color: var(--theme-on-primary) !important;
+  -webkit-text-fill-color: var(--theme-on-primary) !important;
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 4px 10px rgba(var(--theme-primary-rgb), 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* 3. Siguraduhing puti/itim ang icons kapag hover */
+html body .org-shell .page-dashboard .b-actions a:hover svg,
+html body .org-shell .page-dashboard .b-actions .qa:hover svg {
+  stroke: var(--theme-on-primary) !important;
+}
+/* ============================================================
+   🎯 QUICK ACTIONS: VISIBLE ICONS & BACKGROUND (ALL THEMES)
+   ============================================================ */
+
+/* 1. Ayusin ang background ng Quick Action Items */
+html body .org-shell .page-dashboard .b-actions a,
+html body .org-shell .page-dashboard .b-actions .qa,
+html body .org-shell .page-dashboard .b-actions button {
+  /* 👈 Gumamit ng solid theme background para may contrast sa text at icons */
+  background: var(--theme-surface-2) !important; 
+  background-color: var(--theme-surface-2) !important;
+  
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 12px !important;
+  
+  /* Text color */
+  color: var(--theme-text) !important;
+  -webkit-text-fill-color: var(--theme-text) !important;
+}
+
+/* 2. I-override ang Icons (Pilitin silang maging visible) */
+html body .org-shell .page-dashboard .b-actions a svg,
+html body .org-shell .page-dashboard .b-actions .qa svg,
+html body .org-shell .page-dashboard .b-actions button svg,
+html body .org-shell .page-dashboard .b-actions a i,
+html body .org-shell .page-dashboard .b-actions .qa i {
+  /* 👈 Gawing theme text color ang stroke, hindi puti */
+  stroke: var(--theme-text) !important;
+  color: var(--theme-text) !important;
+  fill: none !important;
+  
+  /* Gawing mas makapal ng konti para kitang-kita */
+  stroke-width: 2 !important;
+}
+
+/* 3. Hover State (Kapag pinindot o hinover) */
+html body .org-shell .page-dashboard .b-actions a:hover,
+html body .org-shell .page-dashboard .b-actions .qa:hover {
+  background: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
+  
+  color: var(--theme-on-primary) !important;
+  -webkit-text-fill-color: var(--theme-on-primary) !important;
+  
+  box-shadow: 0 4px 10px rgba(var(--theme-primary-rgb), 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* 4. Kapag Hover, gawing puti/itim ang icon para tumapat sa background */
+html body .org-shell .page-dashboard .b-actions a:hover svg,
+html body .org-shell .page-dashboard .b-actions .qa:hover svg,
+html body .org-shell .page-dashboard .b-actions a:hover i,
+html body .org-shell .page-dashboard .b-actions .qa:hover i {
+  stroke: var(--theme-on-primary) !important;
+  color: var(--theme-on-primary) !important;
+}
+/* ============================================================
+   SIDEBAR UI/UX FIX: DIKIT SA ICON, MAGANDANG FONT, THEME MATCH
+   ============================================================ */
+
+/* 1. Sidebar Active State (Home, Products, etc.) */
+html body .org-shell.org-compact .floating-sidebar .nav-icon.active,
+html body .org-shell.org-compact .floating-sidebar .nav-icon.on,
+html body .org-shell.org-compact .floating-sidebar .nav-icon[aria-current="page"] {
+  /* 👈 Gamitin ang Theme Primary Color (Plum, Forest, Midnight, etc.) */
+  background: var(--theme-primary) !important;
+  color: var(--theme-on-primary) !important;
+  box-shadow: 0 4px 12px rgba(var(--theme-primary-rgb), 0.3) !important;
+}
+
+/* Siguraduhing puti/itim ang icon kapag active */
+html body .org-shell.org-compact .floating-sidebar .nav-icon.active svg,
+html body .org-shell.org-compact .floating-sidebar .nav-icon.on svg {
+  stroke: var(--theme-on-primary) !important;
+}
+
+/* 2. Ayusin ang Sidebar Items (Spacing at Font) */
+html body .org-shell.org-compact .floating-sidebar .nav-icon {
+  /* 👈 Dikit sa icon (gap: 12px) */
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+/* 3. Font ng Text (Home, Products, etc.) */
+html body .org-shell.org-compact .floating-sidebar .nav-icon .t {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--theme-text) !important;
+  -webkit-text-fill-color: var(--theme-text) !important;
+  margin-left: 4px !important; /* Konting espasyo mula sa icon */
+}
+
+/* 4. Brand Text (SJC Supply Office) */
+html body .org-shell.org-compact .floating-sidebar .brand b {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--theme-text) !important;
+  -webkit-text-fill-color: var(--theme-text) !important;
+  margin-left: 8px !important; /* Dikit sa logo */
+}
+
+/* 5. Profile Name (Christian Villanueva) */
+html body .org-shell.org-compact .floating-sidebar .me b {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: var(--theme-text) !important;
+  -webkit-text-fill-color: var(--theme-text) !important;
+}
+
+html body .org-shell.org-compact .floating-sidebar .me small {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--theme-text-muted) !important;
+  -webkit-text-fill-color: var(--theme-text-muted) !important;
+}
+/* ============================================================
+   🎯 SIDEBAR EXPAND: DIKIT NA GAP (TULAD NG IMAGE 2)
+   ============================================================ */
+
+/* 1. I-set ang default na layo (kapag naka-collapse ang sidebar) */
+html body .org-shell.org-compact .org-main {
+  margin-left: 112px !important; /* 16px (left) + 72px (sidebar) + 24px (gap) */
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 2. Kapag naka-hover ang sidebar, i-adjust ang margin ng main content */
+html body .org-shell.org-compact .floating-sidebar:hover ~ .org-main {
+  margin-left: 220px !important; /* 16px (left) + 190px (sidebar hover) + 14px (saktong gap) */
+}
+
+/* 3. Siguraduhing umuurong din ang Topbar kasabay ng main content */
+html body .org-shell.org-compact .floating-sidebar:hover ~ .org-main .top.org-topbar {
+  margin-left: 0 !important; /* Bahala na ang main content mag-adjust */
+}
+/* ============================================================
+   🎯 ZOOM OUT PARA SA ORGANIZATION DASHBOARD LANG
+   ============================================================ */
+
+/* 1. I-target lang ang .org-shell (Organization System) */
+html body .org-shell {
+  zoom: 0.92 !important; 
+  overflow-x: hidden !important;
+}
+
+/* 2. I-override ang lumang zoom sa html at body kung meron man */
+html, body {
+  zoom: 1 !important; /* Ibalik sa normal */
+}
+/* ============================================================
+   🎯 SOLID & MAKAPAL NA ICONS SA SIDEBAR (WALANG FILL)
+   ============================================================ */
+
+/* 1. I-target ang lahat ng icons sa sidebar (Home, Products, etc.) */
+html body .org-shell.org-compact .floating-sidebar .nav-icon svg,
+html body .org-shell.org-compact .floating-sidebar .foot svg,
+html body .org-shell.org-compact .floating-sidebar .brand svg {
+  /* 👈 PANATILIHIN ANG STROKE (Walang fill) */
+  fill: none !important; 
+  stroke: currentColor !important;
+  
+  /* 👈 GAWING MAKAPAL ANG STROKE */
+  stroke-width: 2.5 !important; 
+  
+  /* 👈 SIGURADUHING TAMA ANG LAKI */
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+  
+  /* 👈 PANATILIHIN ANG ROUNDED CAPS */
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+/* 2. Siguraduhing puti ang stroke kapag naka-active (Home, etc.) */
+html body .org-shell.org-compact .floating-sidebar .nav-icon.active svg {
+  stroke: var(--theme-on-primary) !important;
+}
+
+/* 3. Siguraduhing kulay theme text ang stroke kapag hindi active */
+html body .org-shell.org-compact .floating-sidebar .nav-icon:not(.active) svg {
+  stroke: var(--theme-text-muted) !important;
+}
+
+/* 4. Hover State */
+html body .org-shell.org-compact .floating-sidebar .nav-icon:hover svg {
+  stroke: var(--theme-text) !important;
+}
+/* ============================================================
+   🎯 FORCE ONBOARDING SIDEBAR TO BE ALWAYS BLACK/DARK
+   ============================================================ */
+
+/* 1. Default na itsura (kahit hindi naka-hover ang sidebar) */
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"],
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"] .t {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"] svg {
+  stroke: #000000 !important;
+  color: #000000 !important;
+}
+
+/* 2. Kapag naka-active (naka-highlight ang pink/maroon background) */
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"].active,
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"].active .t,
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"][aria-current="page"],
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"][aria-current="page"] .t {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"].active svg,
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"][aria-current="page"] svg {
+  stroke: #000000 !important;
+  color: #000000 !important;
+}
+
+/* 3. Kapag naka-hover ang cursor sa mismong Onboarding link */
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"]:hover,
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"]:hover .t {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+.org-shell .floating-sidebar .nav-icon[href="/org/onboarding"]:hover svg {
+  stroke: #000000 !important;
+  color: #000000 !important;
+}
+
+/* 4. Kapag naka-hover ang cursor sa LOOB ng buong Sidebar (ito ang salarin kanina) */
+.org-shell .floating-sidebar:hover .nav-icon[href="/org/onboarding"],
+.org-shell .floating-sidebar:hover .nav-icon[href="/org/onboarding"] .t {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+.org-shell .floating-sidebar:hover .nav-icon[href="/org/onboarding"] svg {
+  stroke: #000000 !important;
+  color: #000000 !important;
+}
+
+/* 5. Siguraduhing itim din kapag naka-hover AT naka-active nang sabay */
+.org-shell .floating-sidebar:hover .nav-icon[href="/org/onboarding"].active,
+.org-shell .floating-sidebar:hover .nav-icon[href="/org/onboarding"].active .t {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+.org-shell .floating-sidebar:hover .nav-icon[href="/org/onboarding"].active svg {
+  stroke: #000000 !important;
+}

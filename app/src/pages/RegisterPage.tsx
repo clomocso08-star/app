@@ -4,154 +4,332 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
+  BookOpen,
+  Calendar,
+  Check,
   CheckCircle2,
   Eye,
   EyeOff,
+  GraduationCap,
   IdCard,
   LockKeyhole,
   Mail,
   RefreshCw,
   ShieldCheck,
   UserRound,
+  X,
 } from 'lucide-react';
 import AuthCard from '../components/auth/AuthCard';
 import AuthHeader from '../components/auth/AuthHeader';
 import GuidelinesPanel from '../components/auth/GuidelinesPanel';
 import ImageMarquee from '../components/auth/ImageMarquee';
+import AuthBackground from '../components/auth/AuthBackground';
+import RegisterRequirementsModal from '../components/auth/RegisterRequirementsModal';
+import PasswordStrength, {
+  isStrongPassword,
+} from '../components/auth/PasswordStrength';
+import { OTP_EXPIRY_SECONDS, useOtpTimer } from '../components/auth/useOtpTimer';
+import { useRateLimit } from '../components/auth/useRateLimit';
 import type { AuthStage } from '../components/auth/authTypes';
 import { useApp } from '../store';
 import { useToast } from '../toast';
 import {
-  getPasswordErrorMessage,
+  EmailAlreadyRegisteredError,
+  mapSupabaseUser,
+  registerUser,
+  resendOtp,
+  StudentIdAlreadyRegisteredError,
+  verifyOtp,
+} from '../data/auth';
+import {
   isPhinmaedEmail,
   isValidEmail,
   isValidStudentId,
   PHINMAED_DOMAIN,
-  STUDENT_ID_EXAMPLE,
 } from '../data/validation';
-import { mapSupabaseUser, registerUser, resendOtp, verifyOtp } from '../data/auth';
+import { COURSE_OPTIONS, YEAR_LEVELS } from '../data/constants';
+import '../styles/auth.css';
 
 type RegistrationErrors = {
   name?: string;
   email?: string;
   idNumber?: string;
+  course?: string;
+  yearLevel?: string;
+  dateOfBirth?: string;
   password?: string;
   confirmPassword?: string;
   otp?: string;
 };
 
 const OTP_LENGTH = 6;
-const OTP_EXPIRY_SECONDS = 300;
+const OTP_PLACEHOLDER = '\u2013 \u2013 \u2013 \u2013 \u2013 \u2013';
 
-const ROUTES = {
-  LOGIN: '/login',
-  DASHBOARD: '/dashboard',
-} as const;
+/* ============================================
+   ✅ Auto-format student ID
+============================================ */
+function formatStudentIdInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 12);
+
+  if (digits.length === 0) return '';
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) {
+    return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  }
+  return `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6)}`;
+}
+
+/* ============================================
+   ✅ Date of Birth validation helpers
+============================================ */
+function getMaxDob(): string {
+  const today = new Date();
+  const max = new Date(today.getFullYear() - 5, today.getMonth(), today.getDate());
+  return max.toISOString().split('T')[0];
+}
+
+function getMinDob(): string {
+  const today = new Date();
+  const min = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate());
+  return min.toISOString().split('T')[0];
+}
+
+function isValidDob(dob: string): boolean {
+  if (!dob) return false;
+  const date = new Date(dob);
+  if (isNaN(date.getTime())) return false;
+
+  const today = new Date();
+  const minDate = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate());
+  const maxDate = new Date(today.getFullYear() - 5, today.getMonth(), today.getDate());
+
+  return date >= minDate && date <= maxDate;
+}
+
+function calculateAge(dob: string): number {
+  if (!dob) return 0;
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const toast = useToast();
-  const { signIn } = useApp();
+  const { signIn, refreshOnboarding } = useApp();
+
+  /* ✅ Global rate-limit */
+  const { isLocked: isLoginLocked, secondsLeft } = useRateLimit();
+
+  /* ✅ Header inputs (independent) */
+  const [headerIdentifier, setHeaderIdentifier] = useState('');
+  const [headerPassword, setHeaderPassword] = useState('');
+  const [isHeaderSubmitting] = useState(false);
+
+  /* ✅ lockUntil timestamp */
+  const loginLockUntil = isLoginLocked ? Date.now() + secondsLeft * 1000 : null;
 
   const [stage, setStage] = useState<AuthStage>('register');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [idNumber, setIdNumber] = useState('');
+  const [course, setCourse] = useState('');
+  const [yearLevel, setYearLevel] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otp, setOtp] = useState('');
-  const [timeLeft, setTimeLeft] = useState(OTP_EXPIRY_SECONDS);
   const [isRegisterSubmitting, setIsRegisterSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<RegistrationErrors>({});
 
-  // OTP countdown timer
-  useEffect(() => {
-    if (stage !== 'otp') return;
-    if (timeLeft <= 0) {
-      setErrors((previous) => ({
-        ...previous,
+  /* ✅ Requirements Modal state */
+  const [showRequirementsModal, setShowRequirementsModal] = useState(true);
+
+  /* ✅ Password field focus */
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+
+  /* ✅ OTP timer */
+  const { timeLeft, reset: resetTimer, format: formatOtpTime } = useOtpTimer(
+    stage === 'otp',
+    () => {
+      setErrors((prev) => ({
+        ...prev,
         otp: 'This verification code has expired. Resend it to continue.',
       }));
-      return;
     }
+  );
 
-    const timer = window.setInterval(() => {
-      setTimeLeft((previous) => Math.max(0, previous - 1));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [stage, timeLeft]);
-
-  // Auto-redirect on success
+  /* ============================================
+     ✅ REDIRECT AFTER SUCCESS
+     ✅ Bagong account → HOMEPAGE (/) para makita yung welcome modal
+     ============================================ */
   useEffect(() => {
     if (stage !== 'success') return;
-    const timer = window.setTimeout(
-      () => navigate(ROUTES.DASHBOARD, { replace: true }),
-      1200,
-    );
-    return () => window.clearTimeout(timer);
-  }, [navigate, stage]);
 
+    const timer = window.setTimeout(async () => {
+      await refreshOnboarding();
+      navigate('/', { replace: true });
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [navigate, stage, refreshOnboarding]);
+
+  /* ✅ Validation */
   const validateRegistration = (): boolean => {
     const nextErrors: RegistrationErrors = {};
 
     if (!name.trim()) nextErrors.name = 'Username is required.';
-    else if (name.trim().length < 2) nextErrors.name = 'Username must be at least 2 characters.';
+    else if (name.trim().length < 2)
+      nextErrors.name = 'Username must be at least 2 characters.';
 
     if (!email.trim()) nextErrors.email = 'Email address is required.';
-    else if (!isValidEmail(email)) nextErrors.email = 'Please enter a valid email address.';
-    else if (!isPhinmaedEmail(email)) nextErrors.email = `Email must end with ${PHINMAED_DOMAIN}.`;
+    else if (!isValidEmail(email))
+      nextErrors.email = 'Please enter a valid email address.';
+    else if (!isPhinmaedEmail(email))
+      nextErrors.email = `Email must end with ${PHINMAED_DOMAIN}.`;
 
-    if (!idNumber.trim()) nextErrors.idNumber = 'Student ID number is required.';
-    else if (!isValidStudentId(idNumber)) nextErrors.idNumber = `Format: ${STUDENT_ID_EXAMPLE}`;
+    if (!idNumber.trim()) {
+      nextErrors.idNumber = 'Student ID number is required.';
+    } else if (!isValidStudentId(idNumber)) {
+      nextErrors.idNumber = 'Format must be like: XX-XXXX-XXXXXX';
+    }
 
-    const passwordError = getPasswordErrorMessage(password);
-    if (passwordError) nextErrors.password = passwordError;
-    if (!confirmPassword) nextErrors.confirmPassword = 'Please confirm your password.';
-    else if (password !== confirmPassword) nextErrors.confirmPassword = 'Passwords do not match.';
+    if (!course.trim()) {
+      nextErrors.course = 'Course / Strand is required.';
+    }
+
+    if (!yearLevel.trim()) {
+      nextErrors.yearLevel = 'Year level is required.';
+    }
+
+    if (!dateOfBirth.trim()) {
+      nextErrors.dateOfBirth = 'Date of birth is required.';
+    } else if (!isValidDob(dateOfBirth)) {
+      nextErrors.dateOfBirth = 'Please enter a valid date of birth.';
+    }
+
+    if (!password) {
+      nextErrors.password = 'Password is required.';
+    } else if (!isStrongPassword(password)) {
+      nextErrors.password = 'Password does not meet the requirements.';
+    }
+
+    if (!confirmPassword) {
+      nextErrors.confirmPassword = 'Please confirm your password.';
+    } else if (password !== confirmPassword) {
+      nextErrors.confirmPassword = 'Passwords do not match.';
+    }
 
     setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
+
+    if (Object.keys(nextErrors).length > 0) {
+      const firstErrorField = Object.keys(nextErrors)[0];
+      const fieldMap: Record<string, string> = {
+        name: 'register-username',
+        email: 'register-email',
+        idNumber: 'register-id',
+        course: 'register-course',
+        yearLevel: 'register-year-level',
+        dateOfBirth: 'register-dob',
+        password: 'register-password',
+        confirmPassword: 'register-confirm-password',
+      };
+      const elementId = fieldMap[firstErrorField];
+      if (elementId) {
+        document.getElementById(elementId)?.focus();
+      }
+      return false;
+    }
+
+    return true;
   };
 
+  /* ✅ Register submit */
   const handleRegisterSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     if (!validateRegistration()) {
-      toast('Please review the highlighted fields before creating your account.', 'warning');
+      toast(
+        'Please complete all fields before creating your account.',
+        'warning'
+      );
       return;
     }
 
     setIsRegisterSubmitting(true);
     try {
-      await registerUser({ name, email, password, studentId: idNumber });
+      await registerUser({
+        name,
+        email,
+        password,
+        studentId: idNumber,
+        course,
+        yearLevel,
+        dateOfBirth,
+      });
       toast('A verification code was sent to your email.', 'success');
       setStage('otp');
-      setTimeLeft(OTP_EXPIRY_SECONDS);
+      resetTimer();
       setOtp('');
     } catch (error) {
+      if (error instanceof EmailAlreadyRegisteredError) {
+        setErrors((prev) => ({
+          ...prev,
+          email: 'This email is already registered. Please sign in instead.',
+        }));
+        toast(
+          'This email is already registered. Please sign in instead.',
+          'danger'
+        );
+        return;
+      }
+
+      if (error instanceof StudentIdAlreadyRegisteredError) {
+        setErrors((prev) => ({
+          ...prev,
+          idNumber: 'This Student ID is already registered.',
+        }));
+        toast(
+          'This Student ID is already registered. Please sign in instead.',
+          'danger'
+        );
+        return;
+      }
+
       toast(
-        error instanceof Error ? error.message : 'Registration failed. Please try again.',
-        'danger',
+        error instanceof Error
+          ? error.message
+          : 'Registration failed. Please try again.',
+        'danger'
       );
     } finally {
       setIsRegisterSubmitting(false);
     }
   };
 
+  /* ✅ Verify OTP */
   const handleVerifyOtp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     if (otp.length !== OTP_LENGTH) {
-      setErrors((previous) => ({
-        ...previous,
+      setErrors((prev) => ({
+        ...prev,
         otp: `Enter the ${OTP_LENGTH}-digit verification code.`,
       }));
       return;
     }
 
     setIsRegisterSubmitting(true);
-    setErrors((previous) => ({ ...previous, otp: undefined }));
+    setErrors((prev) => ({ ...prev, otp: undefined }));
+
     try {
       const result = await verifyOtp(email, otp);
       const user = mapSupabaseUser(result.user);
@@ -163,51 +341,82 @@ export default function RegisterPage() {
         email: user.email,
         role: appRole,
         idNumber: user.studentId ?? idNumber,
+        course: user.course ?? course,
+        yearLevel: user.yearLevel ?? yearLevel,
+        dateOfBirth: user.dateOfBirth ?? dateOfBirth,
         organization: 'SJCM General',
-      });
+      } as any);
+
       setStage('success');
-      toast('Your account is verified. Redirecting to your dashboard.', 'success');
+      toast('Your account is verified. Welcome to SJCM Store!', 'success');
     } catch (error) {
-      setErrors((previous) => ({
-        ...previous,
-        otp: error instanceof Error ? error.message : 'The code is invalid or expired. Try again.',
+      setErrors((prev) => ({
+        ...prev,
+        otp:
+          error instanceof Error
+            ? error.message
+            : 'The code is invalid or expired. Try again.',
       }));
     } finally {
       setIsRegisterSubmitting(false);
     }
   };
 
+  /* ✅ Resend OTP */
   const handleResendOtp = async () => {
     setIsResending(true);
-    setErrors((previous) => ({ ...previous, otp: undefined }));
+    setErrors((prev) => ({ ...prev, otp: undefined }));
+
     try {
       await resendOtp(email);
       toast('A new verification code was sent.', 'success');
-      setTimeLeft(OTP_EXPIRY_SECONDS);
+      resetTimer();
       setOtp('');
     } catch (error) {
-      toast(error instanceof Error ? error.message : 'Unable to resend the code.', 'danger');
+      toast(
+        error instanceof Error ? error.message : 'Unable to resend the code.',
+        'danger'
+      );
     } finally {
       setIsResending(false);
     }
   };
 
-  const formatOtpTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const remainder = (seconds % 60).toString().padStart(2, '0');
-    return `${minutes}:${remainder}`;
+  const handleStudentIdChange = (value: string) => {
+    setIdNumber(formatStudentIdInput(value));
   };
+
+  /* ✅ Live states */
+  const passwordsMatch =
+    confirmPassword.length > 0 && password === confirmPassword;
+
+  const showPasswordPopover = isPasswordFocused || Boolean(errors.password);
+
+  const age = dateOfBirth ? calculateAge(dateOfBirth) : 0;
 
   return (
     <main className="auth-experience">
+      <AuthBackground />
+
+      {/* ✅ REGISTRATION REQUIREMENTS MODAL */}
+      <RegisterRequirementsModal
+        isOpen={showRequirementsModal}
+        onContinue={() => setShowRequirementsModal(false)}
+      />
+
+      {/* ✅ HEADER */}
       <AuthHeader
-        identifier=""
-        password=""
-        isSubmitting={false}
-        isLocked={false}
-        onIdentifierChange={() => {}}
-        onPasswordChange={() => {}}
-        onSubmit={() => {}}
+        identifier={headerIdentifier}
+        password={headerPassword}
+        isSubmitting={isHeaderSubmitting}
+        isLocked={isLoginLocked}
+        lockUntil={loginLockUntil}
+        onIdentifierChange={setHeaderIdentifier}
+        onPasswordChange={setHeaderPassword}
+        onSubmit={(event) => {
+          event.preventDefault();
+          navigate('/login');
+        }}
       />
 
       <div className="auth-experience__content">
@@ -232,24 +441,38 @@ export default function RegisterPage() {
           }
         >
           {stage === 'otp' ? (
-            <form className="auth-form" onSubmit={(event) => void handleVerifyOtp(event)}>
+            /* ============================================
+               STAGE: OTP VERIFICATION
+            ============================================ */
+            <form
+              className="auth-form"
+              onSubmit={(event) => void handleVerifyOtp(event)}
+            >
               <div className="auth-stage-icon">
                 <ShieldCheck className="react-icon" aria-hidden="true" />
               </div>
+
               <div className="auth-field">
                 <label htmlFor="register-otp">One-Time Password</label>
                 <input
                   id="register-otp"
-                  className={`auth-input auth-input--otp ${errors.otp ? 'has-error' : ''}`}
+                  className={`auth-input auth-input--otp ${
+                    errors.otp ? 'has-error' : ''
+                  }`}
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={OTP_LENGTH}
                   required
+                  placeholder={OTP_PLACEHOLDER}
                   value={otp}
-                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
+                  onChange={(event) =>
+                    setOtp(event.target.value.replace(/\D/g, ''))
+                  }
                   aria-invalid={Boolean(errors.otp)}
-                  aria-describedby={errors.otp ? 'register-otp-error' : undefined}
+                  aria-describedby={
+                    errors.otp ? 'register-otp-error' : undefined
+                  }
                   autoFocus
                 />
                 {errors.otp ? (
@@ -257,6 +480,7 @@ export default function RegisterPage() {
                     {errors.otp}
                   </span>
                 ) : null}
+
                 <div className="auth-otp-meta">
                   <span className={timeLeft < 60 ? 'is-danger' : ''}>
                     Expires in <strong>{formatOtpTime(timeLeft)}</strong>
@@ -264,23 +488,29 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => void handleResendOtp()}
-                    disabled={isResending || timeLeft > OTP_EXPIRY_SECONDS - 30}
+                    disabled={
+                      isResending || timeLeft > OTP_EXPIRY_SECONDS - 30
+                    }
                   >
                     <RefreshCw className="react-icon" aria-hidden="true" />
                     {isResending ? 'Sending…' : 'Resend'}
                   </button>
                 </div>
               </div>
+
               <button
                 className="auth-submit"
                 type="submit"
                 disabled={
-                  isRegisterSubmitting || timeLeft <= 0 || otp.length !== OTP_LENGTH
+                  isRegisterSubmitting ||
+                  timeLeft <= 0 ||
+                  otp.length !== OTP_LENGTH
                 }
               >
                 {isRegisterSubmitting ? 'Verifying…' : 'Verify OTP'}
                 <ArrowRight className="react-icon" aria-hidden="true" />
               </button>
+
               <button
                 className="auth-text-button"
                 type="button"
@@ -294,15 +524,40 @@ export default function RegisterPage() {
               </button>
             </form>
           ) : stage === 'success' ? (
+            /* ============================================
+               STAGE: SUCCESS
+            ============================================ */
             <div className="auth-success" role="status">
-              <CheckCircle2 className="auth-success__icon" aria-hidden="true" />
+              <CheckCircle2
+                className="auth-success__icon"
+                aria-hidden="true"
+              />
               <p>Verified successfully.</p>
-              <span>Redirecting to your dashboard…</span>
+              <span>Taking you to the homepage…</span>
             </div>
           ) : (
-            <form className="auth-form" onSubmit={(event) => void handleRegisterSubmit(event)}>
+            /* ============================================
+               STAGE: REGISTER FORM
+               Layout (6 rows, walang scroll):
+                 1  Username
+                 2  Email           (hint sa label row)
+                 3  Student ID      (format sa label row)
+                 4  Course / Strand (full width)
+                 5  Year Level | Date of Birth (age sa label row)
+                 6  Password   | Confirm Password (match sa label row)
+            ============================================ */
+            <form
+              className="auth-form auth-form--register"
+              onSubmit={(event) => void handleRegisterSubmit(event)}
+              noValidate
+            >
+              {/* 1 · USERNAME */}
               <div className="auth-field">
-                <label htmlFor="register-username">Username</label>
+                <div className="auth-field__label-row">
+                  <label htmlFor="register-username">
+                    Username <span className="auth-field__required">*</span>
+                  </label>
+                </div>
                 <div className="auth-input-wrap">
                   <UserRound className="react-icon" aria-hidden="true" />
                   <input
@@ -311,21 +566,28 @@ export default function RegisterPage() {
                     type="text"
                     autoComplete="name"
                     required
+                    placeholder="your.name"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     aria-invalid={Boolean(errors.name)}
-                    aria-describedby={errors.name ? 'register-name-error' : undefined}
                   />
                 </div>
                 {errors.name ? (
-                  <span id="register-name-error" className="auth-error">
-                    {errors.name}
-                  </span>
+                  <span className="auth-error">{errors.name}</span>
                 ) : null}
               </div>
 
+              {/* 2 · EMAIL */}
               <div className="auth-field">
-                <label htmlFor="register-email">Email Address</label>
+                <div className="auth-field__label-row">
+                  <label htmlFor="register-email">
+                    Email Address{' '}
+                    <span className="auth-field__required">*</span>
+                  </label>
+                  <span className="auth-field__aside">
+                    {PHINMAED_DOMAIN} only
+                  </span>
+                </div>
                 <div className="auth-input-wrap">
                   <Mail className="react-icon" aria-hidden="true" />
                   <input
@@ -334,129 +596,304 @@ export default function RegisterPage() {
                     type="email"
                     autoComplete="email"
                     required
-                    placeholder="name@phinmaed.com"
+                    placeholder={`name${PHINMAED_DOMAIN}`}
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     aria-invalid={Boolean(errors.email)}
-                    aria-describedby={errors.email ? 'register-email-error' : undefined}
                   />
                 </div>
                 {errors.email ? (
-                  <span id="register-email-error" className="auth-error">
-                    {errors.email}
-                  </span>
-                ) : (
-                  <span className="auth-hint">Use your {PHINMAED_DOMAIN} address.</span>
-                )}
+                  <span className="auth-error">{errors.email}</span>
+                ) : null}
               </div>
 
+              {/* 3 · STUDENT ID */}
+              <div className="auth-field">
+                <div className="auth-field__label-row">
+                  <label htmlFor="register-id">
+                    Student ID <span className="auth-field__required">*</span>
+                  </label>
+                  <span className="auth-field__aside">
+                    <strong>XX-XXXX-XXXXXX</strong>
+                  </span>
+                </div>
+                <div className="auth-input-wrap">
+                  <IdCard className="react-icon" aria-hidden="true" />
+                  <input
+                    id="register-id"
+                    className={`auth-input ${
+                      errors.idNumber ? 'has-error' : ''
+                    }`}
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    placeholder="00-0000-000000"
+                    maxLength={14}
+                    value={idNumber}
+                    onChange={(event) =>
+                      handleStudentIdChange(event.target.value)
+                    }
+                    aria-invalid={Boolean(errors.idNumber)}
+                  />
+                </div>
+                {errors.idNumber ? (
+                  <span className="auth-error">{errors.idNumber}</span>
+                ) : null}
+              </div>
+
+              {/* 4 · COURSE / STRAND — full width */}
+              <div className="auth-field">
+                <div className="auth-field__label-row">
+                  <label htmlFor="register-course">
+                    Course / Strand{' '}
+                    <span className="auth-field__required">*</span>
+                  </label>
+                </div>
+                <div className="auth-input-wrap">
+                  <BookOpen className="react-icon" aria-hidden="true" />
+                  <select
+                    id="register-course"
+                    className={`auth-input auth-input--select ${
+                      errors.course ? 'has-error' : ''
+                    }`}
+                    required
+                    value={course}
+                    onChange={(event) => setCourse(event.target.value)}
+                    aria-invalid={Boolean(errors.course)}
+                  >
+                    <option value="">Select course / strand</option>
+                    {COURSE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {errors.course ? (
+                  <span className="auth-error">{errors.course}</span>
+                ) : null}
+              </div>
+
+              {/* 5 · YEAR LEVEL + DATE OF BIRTH */}
               <div className="auth-field-grid">
                 <div className="auth-field">
-                  <label htmlFor="register-id">Student ID</label>
-                  <div className="auth-input-wrap">
-                    <IdCard className="react-icon" aria-hidden="true" />
-                    <input
-                      id="register-id"
-                      className={`auth-input ${errors.idNumber ? 'has-error' : ''}`}
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      required
-                      placeholder="06-2526-004945"
-                      value={idNumber}
-                      onChange={(event) => setIdNumber(event.target.value)}
-                      aria-invalid={Boolean(errors.idNumber)}
-                      aria-describedby={errors.idNumber ? 'register-id-error' : undefined}
-                    />
+                  <div className="auth-field__label-row">
+                    <label htmlFor="register-year-level">
+                      Year Level{' '}
+                      <span className="auth-field__required">*</span>
+                    </label>
                   </div>
-                  {errors.idNumber ? (
-                    <span id="register-id-error" className="auth-error">
-                      {errors.idNumber}
-                    </span>
+                  <div className="auth-input-wrap">
+                    <GraduationCap
+                      className="react-icon"
+                      aria-hidden="true"
+                    />
+                    <select
+                      id="register-year-level"
+                      className={`auth-input auth-input--select ${
+                        errors.yearLevel ? 'has-error' : ''
+                      }`}
+                      required
+                      value={yearLevel}
+                      onChange={(event) => setYearLevel(event.target.value)}
+                      aria-invalid={Boolean(errors.yearLevel)}
+                    >
+                      <option value="">Select year</option>
+                      {YEAR_LEVELS.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {errors.yearLevel ? (
+                    <span className="auth-error">{errors.yearLevel}</span>
                   ) : null}
                 </div>
 
                 <div className="auth-field">
-                  <label htmlFor="register-password">Password</label>
+                  <div className="auth-field__label-row">
+                    <label htmlFor="register-dob">
+                      Date of Birth{' '}
+                      <span className="auth-field__required">*</span>
+                    </label>
+                    {age > 0 && !errors.dateOfBirth ? (
+                      <span className="auth-field__aside">
+                        Age <strong>{age}</strong>
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="auth-input-wrap">
+                    <Calendar className="react-icon" aria-hidden="true" />
+                    <input
+                      id="register-dob"
+                      className={`auth-input ${
+                        errors.dateOfBirth ? 'has-error' : ''
+                      }`}
+                      type="date"
+                      required
+                      min={getMinDob()}
+                      max={getMaxDob()}
+                      value={dateOfBirth}
+                      onChange={(event) => setDateOfBirth(event.target.value)}
+                      aria-invalid={Boolean(errors.dateOfBirth)}
+                      title="Enter your birth date as shown on your ID."
+                    />
+                  </div>
+                  {errors.dateOfBirth ? (
+                    <span className="auth-error">{errors.dateOfBirth}</span>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* 6 · PASSWORD + CONFIRM PASSWORD — 2 columns */}
+              <div className="auth-field-grid">
+                <div className="auth-field">
+                  <div className="auth-field__label-row">
+                    <label htmlFor="register-password">
+                      Password{' '}
+                      <span className="auth-field__required">*</span>
+                    </label>
+                  </div>
+
+                  <div className="auth-field__relative">
+                    <div className="auth-input-wrap">
+                      <LockKeyhole
+                        className="react-icon"
+                        aria-hidden="true"
+                      />
+                      <input
+                        id="register-password"
+                        className={`auth-input auth-input--with-toggle ${
+                          errors.password ? 'has-error' : ''
+                        }`}
+                        type={showRegisterPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        required
+                        placeholder="8+ characters"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        onFocus={() => setIsPasswordFocused(true)}
+                        onBlur={() =>
+                          setTimeout(() => setIsPasswordFocused(false), 150)
+                        }
+                        aria-invalid={Boolean(errors.password)}
+                      />
+                      <button
+                        className="auth-password-toggle"
+                        type="button"
+                        onClick={() => setShowRegisterPassword((v) => !v)}
+                        aria-label={
+                          showRegisterPassword
+                            ? 'Hide password'
+                            : 'Show password'
+                        }
+                      >
+                        {showRegisterPassword ? (
+                          <EyeOff className="react-icon" aria-hidden="true" />
+                        ) : (
+                          <Eye className="react-icon" aria-hidden="true" />
+                        )}
+                      </button>
+                    </div>
+
+                    <PasswordStrength
+                      value={password}
+                      visible={showPasswordPopover && password.length > 0}
+                    />
+                  </div>
+
+                  {errors.password ? (
+                    <span className="auth-error">{errors.password}</span>
+                  ) : null}
+                </div>
+
+                <div className="auth-field">
+                  <div className="auth-field__label-row">
+                    <label htmlFor="register-confirm-password">
+                      Confirm Password{' '}
+                      <span className="auth-field__required">*</span>
+                    </label>
+                    {confirmPassword.length > 0 ? (
+                      <span
+                        className={`auth-field__aside ${
+                          passwordsMatch ? 'is-success' : 'is-danger'
+                        }`}
+                        aria-live="polite"
+                      >
+                        {passwordsMatch ? (
+                          <>
+                            <Check className="react-icon" aria-hidden="true" />
+                            Match
+                          </>
+                        ) : (
+                          <>
+                            <X className="react-icon" aria-hidden="true" />
+                            No match
+                          </>
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="auth-input-wrap">
                     <LockKeyhole className="react-icon" aria-hidden="true" />
                     <input
-                      id="register-password"
-                      className={`auth-input auth-input--with-toggle ${errors.password ? 'has-error' : ''}`}
-                      type={showRegisterPassword ? 'text' : 'password'}
+                      id="register-confirm-password"
+                      className={`auth-input auth-input--with-toggle ${
+                        errors.confirmPassword ? 'has-error' : ''
+                      } ${passwordsMatch ? 'is-valid' : ''}`}
+                      type={showConfirmPassword ? 'text' : 'password'}
                       autoComplete="new-password"
                       required
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      aria-invalid={Boolean(errors.password)}
-                      aria-describedby={errors.password ? 'register-password-error' : undefined}
+                      placeholder="Re-enter"
+                      value={confirmPassword}
+                      onChange={(event) =>
+                        setConfirmPassword(event.target.value)
+                      }
+                      aria-invalid={Boolean(errors.confirmPassword)}
                     />
                     <button
                       className="auth-password-toggle"
                       type="button"
-                      onClick={() => setShowRegisterPassword((visible) => !visible)}
-                      aria-label={showRegisterPassword ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      aria-label={
+                        showConfirmPassword ? 'Hide password' : 'Show password'
+                      }
                     >
-                      {showRegisterPassword ? (
+                      {showConfirmPassword ? (
                         <EyeOff className="react-icon" aria-hidden="true" />
                       ) : (
                         <Eye className="react-icon" aria-hidden="true" />
                       )}
                     </button>
                   </div>
-                  {errors.password ? (
-                    <span id="register-password-error" className="auth-error">
-                      {errors.password}
+
+                  {errors.confirmPassword ? (
+                    <span className="auth-error">
+                      {errors.confirmPassword}
                     </span>
                   ) : null}
                 </div>
               </div>
 
-              <div className="auth-field">
-                <label htmlFor="register-confirm-password">Confirm Password</label>
-                <div className="auth-input-wrap">
-                  <LockKeyhole className="react-icon" aria-hidden="true" />
-                  <input
-                    id="register-confirm-password"
-                    className={`auth-input auth-input--with-toggle ${errors.confirmPassword ? 'has-error' : ''}`}
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    required
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    aria-invalid={Boolean(errors.confirmPassword)}
-                    aria-describedby={
-                      errors.confirmPassword ? 'register-confirm-password-error' : undefined
-                    }
-                  />
-                  <button
-                    className="auth-password-toggle"
-                    type="button"
-                    onClick={() => setShowConfirmPassword((visible) => !visible)}
-                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="react-icon" aria-hidden="true" />
-                    ) : (
-                      <Eye className="react-icon" aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-                {errors.confirmPassword ? (
-                  <span id="register-confirm-password-error" className="auth-error">
-                    {errors.confirmPassword}
-                  </span>
-                ) : null}
-              </div>
+              {/* REQUIRED FIELDS NOTE */}
+              <p className="auth-hint auth-form__note">
+                <span className="auth-field__required">*</span> All fields are
+                required to proceed.
+              </p>
 
-              <button className="auth-submit" type="submit" disabled={isRegisterSubmitting}>
+              {/* SUBMIT */}
+              <button
+                className="auth-submit"
+                type="submit"
+                disabled={isRegisterSubmitting}
+              >
                 {isRegisterSubmitting ? 'Creating account…' : 'Create'}
                 <ArrowRight className="react-icon" aria-hidden="true" />
               </button>
 
               <p className="auth-card__switch">
-                Already have an account?{' '}
-                <Link to={ROUTES.LOGIN}>Sign in</Link>
+                Already have an account? <Link to="/login">Sign in</Link>
               </p>
             </form>
           )}

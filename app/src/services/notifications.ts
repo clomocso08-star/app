@@ -4,12 +4,13 @@ import { supabase } from '../lib/supabaseClient';
 import type { Notification, NotificationType } from '../types/notification';
 import { getCachedData, invalidateCache } from '../utils/cache';
 
-/**
- * Fetch notifications — with cache (2 min TTL)
- */
+/* ============================================
+   FETCH — user notifications
+   ============================================ */
+
 export async function fetchNotifications(userId: string): Promise<Notification[]> {
   return getCachedData(
-    `notifications_${userId}`,
+    `user_notifications_${userId}`, // ✅ Sinync sa store
     async () => {
       const { data, error } = await supabase
         .from('notifications')
@@ -25,9 +26,13 @@ export async function fetchNotifications(userId: string): Promise<Notification[]
 
       return (data ?? []).map(mapNotificationRow);
     },
-    2 * 60 * 1000 // 2 minutes
+    2 * 60 * 1000
   );
 }
+
+/* ============================================
+   CREATE
+   ============================================ */
 
 export async function createNotification(
   userId: string,
@@ -55,10 +60,20 @@ export async function createNotification(
     throw new Error(error.message);
   }
 
-  invalidateCache(`notifications_${userId}`);
+  invalidateCache(`user_notifications_${userId}`); // ✅ Sinync sa store
 }
 
+/* ============================================
+   ✅ MARK AS READ — with cache invalidation
+   ============================================ */
+
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from('notifications')
+    .select('user_id')
+    .eq('id', notificationId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from('notifications')
     .update({ read: true })
@@ -68,7 +83,15 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
     console.error('[Notifications] Failed to mark as read:', error);
     throw new Error(error.message);
   }
+
+  if (existing?.user_id) {
+    invalidateCache(`user_notifications_${existing.user_id}`); // ✅ Sinync
+  }
 }
+
+/* ============================================
+   ✅ MARK ALL AS READ
+   ============================================ */
 
 export async function markAllNotificationsAsRead(userId: string): Promise<void> {
   const { error } = await supabase
@@ -82,10 +105,20 @@ export async function markAllNotificationsAsRead(userId: string): Promise<void> 
     throw new Error(error.message);
   }
 
-  invalidateCache(`notifications_${userId}`);
+  invalidateCache(`user_notifications_${userId}`); // ✅ Sinync
 }
 
+/* ============================================
+   ✅ DELETE — with cache invalidation
+   ============================================ */
+
 export async function deleteNotification(notificationId: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from('notifications')
+    .select('user_id')
+    .eq('id', notificationId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from('notifications')
     .delete()
@@ -95,7 +128,15 @@ export async function deleteNotification(notificationId: string): Promise<void> 
     console.error('[Notifications] Failed to delete:', error);
     throw new Error(error.message);
   }
+
+  if (existing?.user_id) {
+    invalidateCache(`user_notifications_${existing.user_id}`); // ✅ Sinync
+  }
 }
+
+/* ============================================
+   CLEAR ALL
+   ============================================ */
 
 export async function clearAllNotifications(userId: string): Promise<void> {
   const { error } = await supabase
@@ -108,8 +149,12 @@ export async function clearAllNotifications(userId: string): Promise<void> {
     throw new Error(error.message);
   }
 
-  invalidateCache(`notifications_${userId}`);
+  invalidateCache(`user_notifications_${userId}`); // ✅ Sinync
 }
+
+/* ============================================
+   MAPPER
+   ============================================ */
 
 function mapNotificationRow(row: any): Notification {
   return {

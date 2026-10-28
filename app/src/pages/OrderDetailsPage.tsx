@@ -1,25 +1,66 @@
 // src/pages/OrderDetailsPage.tsx
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  AlertCircle, ArrowLeft, MapPin, Printer, Package, Home, Store,
-  BookOpen, ShoppingCart, User, Shield, ChevronRight, Clock, Check,
-  Mail, CreditCard, Calendar, Building2, GraduationCap, LifeBuoy,
-  Menu, X, Pencil,
+  AlertCircle,
+  ArrowLeft,
+  MapPin,
+  Printer,
+  Package,
+  Home,
+  Store,
+  BookOpen,
+  ShoppingCart,
+  User,
+  Shield,
+  ChevronRight,
+  Clock,
+  Check,
+  Mail,
+  CreditCard,
+  Calendar,
+  Building2,
+  GraduationCap,
+  LifeBuoy,
+  X,
+  Pencil,
+  DoorOpen,
+  Lock,
+  Phone,
+  XCircle,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { useApp } from '../store';
 import { useToast } from '../toast';
 import ProductImage from '../components/ProductImage';
+import { supabase } from '../lib/supabaseClient';
+import { COURSE_OPTIONS, YEAR_LEVELS, getCourseLabel } from '../data/constants';
 import {
-  formatDate, formatPrice, getOrderCustomerName, getOrderDate,
-  getOrderEmail, getOrderId, getOrderStatus, getOrderStatusBadge,
-  getOrderStudentId, getOrderTotal,
+  formatDateTime,
+  formatPrice,
+  getOrderCustomerName,
+  getOrderDate,
+  getOrderEmail,
+  getOrderId,
+  getOrderStatus,
+  getOrderStatusBadge,
+  getOrderStudentId,
+  getOrderTotal,
 } from '../services';
-import { fetchOrders } from '../services/orders';
+import {
+  fetchOrders,
+  cancelOrder,
+} from '../services/orders';
 import { fetchProducts } from '../services/products';
 import type { Order, Product } from '../types';
 
+/* ============================================
+  SIDE NAV ITEMS
+============================================ */
 const sideNavItems = [
   { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/catalog', label: 'Shop', icon: Store },
@@ -29,147 +70,455 @@ const sideNavItems = [
   { to: '/settings', label: 'Settings', icon: Shield },
 ];
 
+/* ============================================
+  PROFILE SHAPE
+============================================ */
+interface CustomerProfile {
+  course: string;
+  yearLevel: string;
+  dateOfBirth: string;
+  phone: string;
+}
+
+const EMPTY_PROFILE: CustomerProfile = {
+  course: '',
+  yearLevel: '',
+  dateOfBirth: '',
+  phone: '',
+};
+
+/* ============================================
+  RECEIPT PDF HELPERS
+============================================ */
+interface ReceiptData {
+  order: Order;
+  profile: CustomerProfile;
+  items: Order['items'];
+  totalItems: number;
+  total: number;
+  pickupBuilding: string;
+  pickupRoom: string;
+  customerName: string;
+  studentId: string;
+  email: string;
+  status: string;
+}
+
+function buildReceiptHtml(data: ReceiptData): string {
+  const {
+    order,
+    profile,
+    items,
+    totalItems,
+    total,
+    pickupBuilding,
+    pickupRoom,
+    customerName,
+    studentId,
+    email,
+    status,
+  } = data;
+
+  const rows = items
+    .map((it) => {
+      const qty = Number(it.qty) || 0;
+      const price = Number(it.price) || 0;
+      return `
+        <tr>
+          <td style="text-align:left; padding:3px 0;">
+            ${it.name}${
+        it.size ? ` <span style="color:#555;">(${it.size})</span>` : ''
+      }
+          </td>
+          <td style="text-align:center; padding:3px 0;">${qty}</td>
+          <td style="text-align:right; padding:3px 0;">₱${(
+            price * qty
+          ).toLocaleString()}</td>
+        </tr>`;
+    })
+    .join('');
+
+  return `
+    <div style="text-align:center; margin-bottom:10px;">
+      <h2 style="margin:0; font-size:16px; letter-spacing:1.5px;">RECEIPT</h2>
+      <p style="margin:4px 0; font-size:11px;">Order #${getOrderId(order)}</p>
+      <p style="margin:2px 0; font-size:11px;">${formatDateTime(
+        getOrderDate(order)
+      )}</p>
+      <p style="margin:2px 0; font-size:11px;">Status: ${status}</p>
+    </div>
+    <hr style="border:none; border-top:1px dashed #000; margin:8px 0;" />
+    <div style="font-size:11px; margin-bottom:6px;">
+      <p style="margin:2px 0;"><strong>Customer:</strong> ${customerName}</p>
+      ${
+        studentId
+          ? `<p style="margin:2px 0;">Student ID: ${studentId}</p>`
+          : ''
+      }
+      ${email ? `<p style="margin:2px 0;">Email: ${email}</p>` : ''}
+      ${
+        profile.phone
+          ? `<p style="margin:2px 0;">Phone: ${profile.phone}</p>`
+          : ''
+      }
+      ${
+        profile.course
+          ? `<p style="margin:2px 0;">Course: ${getCourseLabel(
+              profile.course
+            )}</p>`
+          : ''
+      }
+      ${
+        profile.yearLevel
+          ? `<p style="margin:2px 0;">Year Level: ${profile.yearLevel}</p>`
+          : ''
+      }
+    </div>
+    <hr style="border:none; border-top:1px dashed #000; margin:8px 0;" />
+    <table style="width:100%; font-size:11px; border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="text-align:left; padding:3px 0; border-bottom:1px solid #000;">Item</th>
+          <th style="text-align:center; padding:3px 0; border-bottom:1px solid #000;">Qty</th>
+          <th style="text-align:right; padding:3px 0; border-bottom:1px solid #000;">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <hr style="border:none; border-top:1px dashed #000; margin:8px 0;" />
+    <div style="font-size:11px; margin-bottom:4px;">
+      <div style="display:flex; justify-content:space-between;">
+        <span>Total Items</span>
+        <span>${totalItems}</span>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold; margin-top:6px;">
+      <span>TOTAL</span>
+      <span>₱${total.toLocaleString()}</span>
+    </div>
+    <hr style="border:none; border-top:1px dashed #000; margin:8px 0;" />
+    <div style="font-size:10px; text-align:center;">
+      <p style="margin:4px 0; font-weight:bold;">PICKUP INFORMATION</p>
+      <p style="margin:2px 0;">${pickupBuilding}</p>
+      <p style="margin:2px 0;">${pickupRoom}</p>
+      <p style="margin:2px 0;">Mon – Fri · 8:00 AM – 4:00 PM</p>
+      <p style="margin:8px 0 4px; font-style:italic;">
+        Please present this receipt together with your Student ID.
+      </p>
+      <p style="margin:4px 0;">Thank you for your order!</p>
+    </div>
+  `;
+}
+
+async function generateReceiptPdf(data: ReceiptData): Promise<void> {
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = '320px';
+  container.style.background = '#ffffff';
+  container.style.padding = '16px';
+  container.style.fontFamily =
+    'Courier New, ui-monospace, SFMono-Regular, Menlo, monospace';
+  container.style.color = '#000000';
+  container.style.boxSizing = 'border-box';
+  container.innerHTML = buildReceiptHtml(data);
+  document.body.appendChild(container);
+
+  try {
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+    });
+
+    const pdf = new jsPDF({
+      unit: 'px',
+      format: [canvas.width, canvas.height],
+      orientation: 'portrait',
+    });
+
+    pdf.addImage(
+      canvas.toDataURL('image/png'),
+      'PNG',
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    pdf.save(`receipt-${getOrderId(data.order)}.pdf`);
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+/* ============================================
+  ORDER DETAILS PAGE
+============================================ */
 export default function OrderDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { session } = useApp();
+  const { session, signIn } = useApp();
+
   const [order, setOrder] = useState<Order | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [profile, setProfile] = useState<CustomerProfile>(EMPTY_PROFILE);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSidebarPinned, setIsSidebarPinned] = useState(false);
 
-  const sidebarRef = useRef<HTMLElement>(null);
-  const hoverZoneRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<number | null>(null);
+  /* Edit modal state */
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editCourse, setEditCourse] = useState('');
+  const [editYearLevel, setEditYearLevel] = useState('');
+  const [editDateOfBirth, setEditDateOfBirth] = useState('');
+  const [editPhone, setEditPhone] = useState('');
 
+  /* Cancel modal state */
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  /* ✅ Receipt PDF state */
+  const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
+
+  /* Redirect kapag walang session */
   useEffect(() => {
     if (!session) {
       toast('Please sign in to view order details.', 'warning');
-      const timer = window.setTimeout(() => navigate('/login', { replace: true }), 500);
+      const timer = window.setTimeout(
+        () => navigate('/login', { replace: true }),
+        500
+      );
       return () => window.clearTimeout(timer);
     }
   }, [session, navigate, toast]);
 
+  /* ✅ Load order + products + PROFILE */
   useEffect(() => {
     if (!session || !id) {
       setIsLoading(false);
       return;
     }
     let cancelled = false;
+
     const loadData = async () => {
       setIsLoading(true);
-      const [ordersData, productsData] = await Promise.all([
+
+      const [ordersData, productsData, profileRes] = await Promise.all([
         fetchOrders(session.id),
         fetchProducts(),
+        supabase
+          .from('profiles')
+          .select('course_strand, year_level, date_of_birth, phone')
+          .eq('id', session.id)
+          .maybeSingle(),
       ]);
-      if (!cancelled) {
-        const foundOrder = ordersData.find(
-          (o) => getOrderId(o) === id && o.userId === session.id
-        );
-        setOrder(foundOrder ?? null);
-        setProducts(productsData);
-        setIsLoading(false);
+
+      if (cancelled) return;
+
+      const foundOrder = ordersData.find(
+        (o) => getOrderId(o) === id && o.userId === session.id
+      );
+      setOrder(foundOrder ?? null);
+      setProducts(productsData);
+
+      if (profileRes.data) {
+        setProfile({
+          course: profileRes.data.course_strand ?? '',
+          yearLevel: profileRes.data.year_level ?? '',
+          dateOfBirth: profileRes.data.date_of_birth ?? '',
+          phone: profileRes.data.phone ?? '',
+        });
+      } else {
+        setProfile(EMPTY_PROFILE);
       }
+
+      setIsLoading(false);
     };
+
     loadData();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [session, id]);
 
+  /* ✅ Populate edit form kapag binuksan yung modal */
   useEffect(() => {
-    const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
-    if (!isDesktop()) return;
-    const openSidebar = () => {
-      if (closeTimerRef.current) {
-        window.clearTimeout(closeTimerRef.current);
-        closeTimerRef.current = null;
+    if (isEditModalOpen) {
+      setEditCourse(profile.course || '');
+      setEditYearLevel(profile.yearLevel || '');
+      setEditDateOfBirth(profile.dateOfBirth || '');
+      setEditPhone(profile.phone || '');
+    }
+  }, [isEditModalOpen, profile]);
+
+  /* Close modal on Escape + lock body scroll */
+  useEffect(() => {
+    if (!isEditModalOpen && !isCancelModalOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isEditModalOpen && !isSaving) setIsEditModalOpen(false);
+        if (isCancelModalOpen && !isCancelling) setIsCancelModalOpen(false);
       }
-      setIsSidebarOpen(true);
     };
-    const scheduleClose = () => {
-      if (isSidebarPinned) return;
-      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = window.setTimeout(() => setIsSidebarOpen(false), 150);
-    };
-    const zone = hoverZoneRef.current;
-    const sidebar = sidebarRef.current;
-    if (!zone || !sidebar) return;
-    zone.addEventListener('mouseenter', openSidebar);
-    sidebar.addEventListener('mouseenter', openSidebar);
-    sidebar.addEventListener('mouseleave', scheduleClose);
-    zone.addEventListener('mouseleave', scheduleClose);
+
+    document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden';
+
     return () => {
-      zone.removeEventListener('mouseenter', openSidebar);
-      sidebar.removeEventListener('mouseenter', openSidebar);
-      sidebar.removeEventListener('mouseleave', scheduleClose);
-      zone.removeEventListener('mouseleave', scheduleClose);
-      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
     };
-  }, [isSidebarPinned, session]);
+  }, [isEditModalOpen, isCancelModalOpen, isSaving, isCancelling]);
+
+  /* ✅ Save profile */
+  const handleSaveProfile = async () => {
+    if (!session?.id) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          course_strand: editCourse || null,
+          year_level: editYearLevel || null,
+          date_of_birth: editDateOfBirth || null,
+          phone: editPhone || null,
+        })
+        .eq('id', session.id);
+
+      if (error) throw error;
+
+      setProfile({
+        course: editCourse,
+        yearLevel: editYearLevel,
+        dateOfBirth: editDateOfBirth,
+        phone: editPhone,
+      });
+
+      signIn({
+        ...session,
+        course: editCourse,
+        yearLevel: editYearLevel,
+        dateOfBirth: editDateOfBirth,
+        phone: editPhone,
+      } as any);
+
+      toast('Profile updated successfully!', 'success');
+      setIsEditModalOpen(false);
+    } catch (error: any) {
+      console.error('[OrderDetails] Failed to save profile:', error);
+      toast(error?.message || 'Failed to save profile', 'danger');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /* ✅ Cancel order */
+  const handleCancelOrder = async () => {
+    if (!order || !session) return;
+
+    setIsCancelling(true);
+    try {
+      await cancelOrder(getOrderId(order), cancelReason || 'Cancelled by user');
+      toast('Order cancelled successfully', 'success');
+      setIsCancelModalOpen(false);
+
+      setOrder({ ...order, orderStatus: 'Cancelled' } as Order);
+
+      setTimeout(() => navigate('/dashboard'), 2000);
+    } catch (error: any) {
+      console.error('[OrderDetails] Cancel failed:', error);
+      toast(error?.message || 'Failed to cancel order', 'danger');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  /* ✅ Print Receipt as PDF */
+  const handlePrintReceipt = async () => {
+    if (!order || !session) return;
+
+    const items = order.items ?? [];
+    const totalItems = items.reduce(
+      (sum, item) => sum + (Number(item.qty) || 0),
+      0
+    );
+    const status = getOrderStatus(order);
+
+    const locationParts = (order.claimLocation || '').split(' — ');
+    const pickupBuilding = locationParts[0]?.trim() || 'SJCM Main Campus';
+    const pickupRoom = locationParts[1]?.trim() || 'Supply Office';
+
+    setIsPrintingReceipt(true);
+    try {
+      await generateReceiptPdf({
+        order,
+        profile,
+        items,
+        totalItems,
+        total: getOrderTotal(order),
+        pickupBuilding,
+        pickupRoom,
+        customerName: getOrderCustomerName(order),
+        studentId: getOrderStudentId(order),
+        email: getOrderEmail(order),
+        status,
+      });
+      toast('Receipt PDF downloaded', 'success');
+    } catch (error) {
+      console.error('[OrderDetails] Receipt PDF failed:', error);
+      toast('Failed to generate receipt PDF', 'danger');
+    } finally {
+      setIsPrintingReceipt(false);
+    }
+  };
 
   if (!session) return null;
 
   const getInitials = () => {
     const name = session.name || '';
-    return name.split(' ').filter(Boolean).slice(0, 2)
-      .map((p) => p[0]?.toUpperCase()).join('') || 'U';
+    return (
+      name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((p) => p[0]?.toUpperCase())
+        .join('') || 'U'
+    );
   };
 
-  const Sidebar = () => (
-    <>
-      <div ref={hoverZoneRef} className="order-hover-zone" aria-hidden="true" />
-      <aside ref={sidebarRef} className={`order-sidebar-nav ${isSidebarOpen ? 'is-open' : ''}`}>
-        <div className="order-sidebar-nav__top">
-          <button
-            type="button"
-            className="order-sidebar-nav__pin"
-            onClick={() => setIsSidebarPinned((p) => !p)}
-            aria-label={isSidebarPinned ? 'Unpin sidebar' : 'Pin sidebar'}
-          >
-            {isSidebarPinned ? <X className="react-icon" /> : <ChevronRight className="react-icon" />}
-          </button>
-          <Link to="/" className="order-sidebar-nav__brand" onClick={() => setIsSidebarOpen(false)}>
-            <span className="order-sidebar-nav__brand-mark">SJ</span>
-            <span className="order-sidebar-nav__brand-copy">
-              <span className="order-sidebar-nav__brand-name">SJCM STORE</span>
-              <span className="order-sidebar-nav__brand-tag">Official School Merchandise</span>
-            </span>
-          </Link>
-          <nav className="order-sidebar-nav__list">
-            {sideNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.active || item.to === '/dashboard';
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`order-sidebar-nav__item ${isActive ? 'is-active' : ''}`}
-                  onClick={() => setIsSidebarOpen(false)}
-                  data-label={item.label}
-                >
-                  <Icon className="react-icon" aria-hidden="true" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-        <div className="order-sidebar-nav__bottom">
-          <p className="order-sidebar-nav__brand-label">SJCM STORE</p>
-          <p className="order-sidebar-nav__brand-quote">"Wear your<br />Saint Jude Pride"</p>
-        </div>
-      </aside>
-      {isSidebarOpen && (
-        <div className="order-backdrop" onClick={() => setIsSidebarOpen(false)} aria-hidden="true" />
-      )}
-    </>
-  );
-
+  /* Loading state */
   if (isLoading) {
     return (
-      <div className={`order-page ${isSidebarOpen ? 'is-sidebar-open' : ''}`}>
-        <Sidebar />
+      <div className="order-page">
+        <aside className="order-sidebar-nav">
+          <div className="order-sidebar-nav__top">
+            <nav className="order-sidebar-nav__list">
+              {sideNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.active || item.to === '/dashboard';
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={`order-sidebar-nav__item ${
+                      isActive ? 'is-active' : ''
+                    }`}
+                    data-label={item.label}
+                  >
+                    <Icon className="react-icon" aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </aside>
+
         <div className="order-main-wrap">
           <main className="order-container">
             <Link to="/dashboard" className="order-back">
@@ -186,10 +535,34 @@ export default function OrderDetailsPage() {
     );
   }
 
+  /* Not found state */
   if (!order) {
     return (
-      <div className={`order-page ${isSidebarOpen ? 'is-sidebar-open' : ''}`}>
-        <Sidebar />
+      <div className="order-page">
+        <aside className="order-sidebar-nav">
+          <div className="order-sidebar-nav__top">
+            <nav className="order-sidebar-nav__list">
+              {sideNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.active || item.to === '/dashboard';
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={`order-sidebar-nav__item ${
+                      isActive ? 'is-active' : ''
+                    }`}
+                    data-label={item.label}
+                  >
+                    <Icon className="react-icon" aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </aside>
+
         <div className="order-main-wrap">
           <main className="order-container">
             <Link to="/dashboard" className="order-back">
@@ -200,7 +573,8 @@ export default function OrderDetailsPage() {
               <AlertCircle className="react-icon" aria-hidden="true" />
               <h2 className="order-not-found__title">Order not found</h2>
               <p className="order-not-found__description">
-                The specified reservation does not exist or is not part of your account.
+                The specified reservation does not exist or is not part of your
+                account.
               </p>
               <Link to="/dashboard" className="button button--primary">
                 Return to My Orders
@@ -212,34 +586,76 @@ export default function OrderDetailsPage() {
     );
   }
 
+  /* Data preparation */
   const badge = getOrderStatusBadge(getOrderStatus(order));
   const items = order.items ?? [];
-  const totalItems = items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+  const totalItems = items.reduce(
+    (sum, item) => sum + (Number(item.qty) || 0),
+    0
+  );
   const status = getOrderStatus(order);
 
+  /* ✅ Determine if cancellable */
+  const canCancel = status === 'Pending';
+  const showLockNote = status === 'Processing';
+
   const steps = [
-    { key: 'Pending', label: 'Pending', desc: 'Your order is being reviewed by the seller.' },
-    { key: 'Processing', label: 'Processing', desc: 'Admin is preparing your items.' },
-    { key: 'Ready for Pickup', label: 'For Pickup', desc: 'Your order is ready for pickup.' },
-    { key: 'Claimed', label: 'Completed', desc: 'Order has been successfully claimed.' },
+    {
+      key: 'Pending',
+      label: 'Pending',
+      desc: 'Your order is being reviewed by the seller.',
+    },
+    {
+      key: 'Processing',
+      label: 'Processing',
+      desc: 'Admin is preparing your items.',
+    },
+    {
+      key: 'Ready for Pickup',
+      label: 'For Pickup',
+      desc: 'Your order is ready for pickup.',
+    },
+    {
+      key: 'Claimed',
+      label: 'Completed',
+      desc: 'Order has been successfully claimed.',
+    },
   ];
   const statusOrder = ['Pending', 'Processing', 'Ready for Pickup', 'Claimed'];
   const currentIndex = Math.max(0, statusOrder.indexOf(status));
 
+  const locationParts = (order.claimLocation || '').split(' — ');
+  const pickupBuilding = locationParts[0]?.trim() || 'SJCM Main Campus';
+  const pickupRoom = locationParts[1]?.trim() || 'Supply Office';
+
   return (
-    <div className={`order-page ${isSidebarOpen ? 'is-sidebar-open' : ''}`}>
-      <Sidebar />
+    <div className="order-page">
+      {/* SIDEBAR */}
+      <aside className="order-sidebar-nav">
+        <div className="order-sidebar-nav__top">
+          <nav className="order-sidebar-nav__list">
+            {sideNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = item.active || item.to === '/dashboard';
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`order-sidebar-nav__item ${
+                    isActive ? 'is-active' : ''
+                  }`}
+                  data-label={item.label}
+                >
+                  <Icon className="react-icon" aria-hidden="true" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </aside>
 
       <div className="order-main-wrap">
-        <button
-          type="button"
-          className="order-mobile-menu"
-          aria-label="Toggle navigation"
-          onClick={() => setIsSidebarOpen((p) => !p)}
-        >
-          {isSidebarOpen ? <X className="react-icon" /> : <Menu className="react-icon" />}
-        </button>
-
         <main className="order-container">
           <Link to="/dashboard" className="order-back">
             <ArrowLeft className="react-icon" aria-hidden="true" />
@@ -247,9 +663,7 @@ export default function OrderDetailsPage() {
           </Link>
 
           <div className="od-layout">
-            {/* ============================================
-                LEFT COLUMN
-                ============================================ */}
+            {/* LEFT COLUMN */}
             <div className="od-main">
               {/* HERO */}
               <section className="od-hero">
@@ -261,16 +675,42 @@ export default function OrderDetailsPage() {
                   </span>
                   <h1 className="od-hero__id">{getOrderId(order)}</h1>
                   <p className="od-hero__date">
-                    Placed on {formatDate(getOrderDate(order))} · 8:24 AM
+                    Placed on {formatDateTime(getOrderDate(order))}
                   </p>
+
+                  {/* ✅ CANCEL BUTTON — Only if Pending */}
+                  {canCancel && (
+                    <button
+                      type="button"
+                      className="od-hero__cancel"
+                      onClick={() => setIsCancelModalOpen(true)}
+                    >
+                      <XCircle className="react-icon" aria-hidden="true" />
+                      <span>Cancel Order</span>
+                    </button>
+                  )}
+
+                  {/* ✅ LOCK NOTE — Processing status */}
+                  {showLockNote && (
+                    <div className="od-hero__lock-note">
+                      <Lock className="react-icon" aria-hidden="true" />
+                      <span>
+                        Order is being processed and cannot be cancelled.
+                        Contact the supply office if you need help.
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
                   className="od-hero__print"
-                  onClick={() => window.print()}
+                  onClick={handlePrintReceipt}
+                  disabled={isPrintingReceipt}
                 >
                   <Printer className="react-icon" aria-hidden="true" />
-                  <span>Print Receipt</span>
+                  <span>
+                    {isPrintingReceipt ? 'Generating…' : 'Print Receipt'}
+                  </span>
                 </button>
               </section>
 
@@ -289,7 +729,10 @@ export default function OrderDetailsPage() {
                   {items.map((item) => {
                     const product = products.find((p) => p.id === item.id);
                     return (
-                      <li className="od-item" key={`${item.id}-${item.size}`}>
+                      <li
+                        className="od-item"
+                        key={`${item.id}-${item.size}`}
+                      >
                         <Link
                           to={`/products/${encodeURIComponent(item.id)}`}
                           className="od-item__thumb"
@@ -302,26 +745,31 @@ export default function OrderDetailsPage() {
                               height={120}
                             />
                           ) : (
-                            <Package className="react-icon" aria-hidden="true" />
+                            <Package
+                              className="react-icon"
+                              aria-hidden="true"
+                            />
                           )}
                         </Link>
-
                         <div className="od-item__info">
                           <p className="od-item__name">{item.name}</p>
                           <p className="od-item__meta">
                             {item.size && <>Size: {item.size}</>}
-                            {item.size && item.organization && <> · </>}
-                            {item.organization && <>Color: <strong>Maroon</strong></>}
                           </p>
                         </div>
 
                         <div className="od-item__qty">
                           <span className="od-item__qty-label">Qty</span>
-                          <span className="od-item__qty-value">{Number(item.qty) || 0}</span>
+                          <span className="od-item__qty-value">
+                            {Number(item.qty) || 0}
+                          </span>
                         </div>
 
                         <div className="od-item__price">
-                          {formatPrice((Number(item.price) || 0) * (Number(item.qty) || 0))}
+                          {formatPrice(
+                            (Number(item.price) || 0) *
+                              (Number(item.qty) || 0)
+                          )}
                         </div>
                       </li>
                     );
@@ -334,10 +782,14 @@ export default function OrderDetailsPage() {
                       <Package className="react-icon" aria-hidden="true" />
                       Total Items
                     </span>
-                    <strong className="od-items-footer__value">{totalItems}</strong>
+                    <strong className="od-items-footer__value">
+                      {totalItems}
+                    </strong>
                   </div>
                   <div className="od-items-footer__right">
-                    <span className="od-items-footer__label">Order Total</span>
+                    <span className="od-items-footer__label">
+                      Order Total
+                    </span>
                     <strong className="od-items-footer__value od-items-footer__value--brand">
                       {formatPrice(getOrderTotal(order))}
                     </strong>
@@ -351,25 +803,54 @@ export default function OrderDetailsPage() {
                   <span className="od-card__head-icon">
                     <MapPin className="react-icon" aria-hidden="true" />
                   </span>
-                  <h2 className="od-card__head-title">Pickup Information</h2>
+                  <h2 className="od-card__head-title">
+                    Pickup Information
+                  </h2>
                 </header>
 
                 <div className="od-pickup">
                   <div className="od-pickup__location">
                     <span className="od-pickup__location-icon">
-                      <Building2 className="react-icon" aria-hidden="true" />
+                      <Building2
+                        className="react-icon"
+                        aria-hidden="true"
+                      />
                     </span>
                     <div className="od-pickup__location-info">
-                      <p className="od-pickup__location-title">SJCM Main Campus</p>
-                      <p className="od-pickup__location-text">Finance &amp; Property Office</p>
-                      <p className="od-pickup__location-text">Monday – Friday · 8:00 AM – 4:00 PM</p>
+                      <p className="od-pickup__location-label">Building</p>
+                      <p className="od-pickup__location-title">
+                        {pickupBuilding}
+                      </p>
+
+                      <p className="od-pickup__location-label">
+                        Room / Office
+                      </p>
+                      <p className="od-pickup__location-text">
+                        <DoorOpen
+                          className="react-icon"
+                          aria-hidden="true"
+                          style={{
+                            width: 14,
+                            height: 14,
+                            display: 'inline-block',
+                            verticalAlign: 'middle',
+                            marginRight: 6,
+                          }}
+                        />
+                        {pickupRoom}
+                      </p>
+
+                      <p className="od-pickup__location-label">Hours</p>
+                      <p className="od-pickup__location-text">
+                        Monday – Friday · 8:00 AM – 4:00 PM
+                      </p>
                     </div>
                   </div>
                   <div className="od-pickup__note">
                     <Shield className="react-icon" aria-hidden="true" />
                     <span>
-                      Please present this receipt together with your Student ID at the
-                      campus merchandise counter.
+                      Please present this receipt together with your Student ID
+                      at the campus merchandise counter.
                     </span>
                   </div>
                 </div>
@@ -381,8 +862,14 @@ export default function OrderDetailsPage() {
                   <span className="od-card__head-icon">
                     <User className="react-icon" aria-hidden="true" />
                   </span>
-                  <h2 className="od-card__head-title">Customer Information</h2>
-                  <button type="button" className="od-card__edit">
+                  <h2 className="od-card__head-title">
+                    Customer Information
+                  </h2>
+                  <button
+                    type="button"
+                    className="od-card__edit"
+                    onClick={() => setIsEditModalOpen(true)}
+                  >
                     <Pencil className="react-icon" aria-hidden="true" />
                     <span>Edit</span>
                   </button>
@@ -392,16 +879,21 @@ export default function OrderDetailsPage() {
                   <div className="od-customer__identity">
                     <span className="od-customer__avatar">
                       {session.profilePicture ? (
-                        <img src={session.profilePicture} alt={session.name} />
+                        <img
+                          src={session.profilePicture}
+                          alt={session.name}
+                        />
                       ) : (
-                        <span className="od-customer__initials">{getInitials()}</span>
+                        <span className="od-customer__initials">
+                          {getInitials()}
+                        </span>
                       )}
                     </span>
                     <div className="od-customer__info">
-                      <p className="od-customer__name">{getOrderCustomerName(order)}</p>
-                      <p className="od-customer__meta">
-                        {session.role} · BS Information Technology
+                      <p className="od-customer__name">
+                        {getOrderCustomerName(order)}
                       </p>
+                      <p className="od-customer__meta">{session.role}</p>
                       <p className="od-customer__meta">
                         ID Number: {getOrderStudentId(order) || '—'}
                       </p>
@@ -414,35 +906,58 @@ export default function OrderDetailsPage() {
                   <ul className="od-customer__details">
                     <li>
                       <span className="od-customer__details-label">
-                        <GraduationCap className="react-icon" aria-hidden="true" />
+                        <GraduationCap
+                          className="react-icon"
+                          aria-hidden="true"
+                        />
                         Year Level
                       </span>
-                      <span className="od-customer__details-value">2nd Year</span>
+                      <span className="od-customer__details-value">
+                        {profile.yearLevel || '—'}
+                      </span>
                     </li>
                     <li>
                       <span className="od-customer__details-label">
-                        <BookOpen className="react-icon" aria-hidden="true" />
+                        <BookOpen
+                          className="react-icon"
+                          aria-hidden="true"
+                        />
                         Course / Strand
                       </span>
-                      <span className="od-customer__details-value">BS Information Technology</span>
+                      <span className="od-customer__details-value">
+                        {profile.course
+                          ? getCourseLabel(profile.course)
+                          : '—'}
+                      </span>
                     </li>
                     <li>
                       <span className="od-customer__details-label">
-                        <Calendar className="react-icon" aria-hidden="true" />
+                        <Calendar
+                          className="react-icon"
+                          aria-hidden="true"
+                        />
                         Date of Birth
                       </span>
-                      <span className="od-customer__details-value">—</span>
+                      <span className="od-customer__details-value">
+                        {profile.dateOfBirth || '—'}
+                      </span>
+                    </li>
+                    <li>
+                      <span className="od-customer__details-label">
+                        <Phone className="react-icon" aria-hidden="true" />
+                        Contact Number
+                      </span>
+                      <span className="od-customer__details-value">
+                        {profile.phone || '—'}
+                      </span>
                     </li>
                   </ul>
                 </div>
               </section>
             </div>
 
-            {/* ============================================
-                RIGHT RAIL
-                ============================================ */}
+            {/* RIGHT RAIL */}
             <aside className="od-rail">
-              {/* SUMMARY */}
               <section className="od-rail-card">
                 <h2 className="od-rail-card__title">
                   <CreditCard className="react-icon" aria-hidden="true" />
@@ -464,7 +979,6 @@ export default function OrderDetailsPage() {
                 </div>
               </section>
 
-              {/* STATUS */}
               <section className="od-rail-card">
                 <h2 className="od-rail-card__title">
                   <Clock className="react-icon" aria-hidden="true" />
@@ -477,17 +991,26 @@ export default function OrderDetailsPage() {
                     return (
                       <li
                         key={step.key}
-                        className={`od-timeline__step ${isDone ? 'is-done' : ''} ${isActive ? 'is-active' : ''}`}
+                        className={`od-timeline__step ${
+                          isDone ? 'is-done' : ''
+                        } ${isActive ? 'is-active' : ''}`}
                       >
                         <span className="od-timeline__marker">
-                          {isDone ? <Check className="react-icon" aria-hidden="true" /> : null}
+                          {isDone ? (
+                            <Check
+                              className="react-icon"
+                              aria-hidden="true"
+                            />
+                          ) : null}
                         </span>
                         <div className="od-timeline__content">
-                          <p className="od-timeline__label">{step.label}</p>
+                          <p className="od-timeline__label">
+                            {step.label}
+                          </p>
                           <p className="od-timeline__desc">{step.desc}</p>
                           {isActive && (
                             <p className="od-timeline__time">
-                              {formatDate(getOrderDate(order))} · 8:24 AM
+                              {formatDateTime(getOrderDate(order))}
                             </p>
                           )}
                         </div>
@@ -497,7 +1020,6 @@ export default function OrderDetailsPage() {
                 </ol>
               </section>
 
-              {/* HELP */}
               <section className="od-rail-card">
                 <h2 className="od-rail-card__title">
                   <LifeBuoy className="react-icon" aria-hidden="true" />
@@ -506,16 +1028,250 @@ export default function OrderDetailsPage() {
                 <p className="od-rail-card__text">
                   Have questions about your order? We're here to help.
                 </p>
-                <a href="mailto:suppliesjc@gmail.com" className="od-rail-card__cta">
+                <a
+                  href="mailto:suppliesjc@gmail.com"
+                  className="od-rail-card__cta"
+                >
                   <Mail className="react-icon" aria-hidden="true" />
                   <span>Contact Support</span>
-                  <ChevronRight className="react-icon" aria-hidden="true" />
+                  <ChevronRight
+                    className="react-icon"
+                    aria-hidden="true"
+                  />
                 </a>
               </section>
             </aside>
           </div>
         </main>
       </div>
+
+      {/* EDIT PROFILE MODAL */}
+      {isEditModalOpen && (
+        <div
+          className="od-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSaving)
+              setIsEditModalOpen(false);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit profile"
+        >
+          <div className="od-modal">
+            <div className="od-modal__header">
+              <div className="od-modal__header-copy">
+                <span className="od-modal__header-icon">
+                  <Pencil className="react-icon" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 className="od-modal__title">Edit Profile</h2>
+                  <p className="od-modal__subtitle">
+                    Update your personal information
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="od-modal__close"
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={isSaving}
+                aria-label="Close"
+              >
+                <X className="react-icon" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="od-modal__body">
+              <div className="od-modal__locked-info">
+                <Lock className="react-icon" aria-hidden="true" />
+                <span>
+                  Full Name, Student ID, and Email are locked. Contact support
+                  to change them.
+                </span>
+              </div>
+
+              <div className="field">
+                <label className="field__label" htmlFor="edit-phone">
+                  Phone Number
+                </label>
+                <input
+                  id="edit-phone"
+                  className="field__input"
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="09XX XXX XXXX"
+                  disabled={isSaving}
+                />
+              </div>
+
+              <div className="field">
+                <label className="field__label" htmlFor="edit-course">
+                  Course / Strand
+                </label>
+                <select
+                  id="edit-course"
+                  className="field__input"
+                  value={editCourse}
+                  onChange={(e) => setEditCourse(e.target.value)}
+                  disabled={isSaving}
+                >
+                  <option value="">Select course / strand</option>
+                  {COURSE_OPTIONS.map((course) => (
+                    <option key={course.value} value={course.value}>
+                      {course.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="field__label" htmlFor="edit-year">
+                  Year Level
+                </label>
+                <select
+                  id="edit-year"
+                  className="field__input"
+                  value={editYearLevel}
+                  onChange={(e) => setEditYearLevel(e.target.value)}
+                  disabled={isSaving}
+                >
+                  <option value="">Select year level</option>
+                  {YEAR_LEVELS.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="field__label" htmlFor="edit-dob">
+                  Date of Birth
+                </label>
+                <input
+                  id="edit-dob"
+                  className="field__input"
+                  type="date"
+                  value={editDateOfBirth}
+                  onChange={(e) => setEditDateOfBirth(e.target.value)}
+                  disabled={isSaving}
+                />
+              </div>
+            </div>
+
+            <div className="od-modal__footer">
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================
+          ✅ CANCEL ORDER MODAL
+      ============================================ */}
+      {isCancelModalOpen && order && (
+        <div
+          className="cancel-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isCancelling)
+              setIsCancelModalOpen(false);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Cancel order"
+        >
+          <div className="cancel-modal">
+            <div className="cancel-modal__header">
+              <span className="cancel-modal__icon">
+                <AlertTriangle className="react-icon" aria-hidden="true" />
+              </span>
+              <div>
+                <h2 className="cancel-modal__title">Cancel Order?</h2>
+                <p className="cancel-modal__subtitle">
+                  Order {getOrderId(order)}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="cancel-modal__close"
+                onClick={() => setIsCancelModalOpen(false)}
+                disabled={isCancelling}
+                aria-label="Close"
+              >
+                <X className="react-icon" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="cancel-modal__body">
+              <p className="cancel-modal__warning">
+                ⚠️ This action cannot be undone. Your order will be cancelled
+                and you'll need to place a new one if you change your mind.
+              </p>
+
+              <label className="cancel-modal__label" htmlFor="cancel-reason">
+                Reason for cancellation (optional)
+              </label>
+              <textarea
+                id="cancel-reason"
+                className="cancel-modal__textarea"
+                rows={3}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g., Changed my mind, Wrong size, Duplicate order..."
+                disabled={isCancelling}
+              />
+            </div>
+
+            <div className="cancel-modal__footer">
+              <button
+                type="button"
+                className="cancel-modal__btn cancel-modal__btn--ghost"
+                onClick={() => setIsCancelModalOpen(false)}
+                disabled={isCancelling}
+              >
+                Keep Order
+              </button>
+              <button
+                type="button"
+                className="cancel-modal__btn cancel-modal__btn--danger"
+                onClick={handleCancelOrder}
+                disabled={isCancelling}
+              >
+                {isCancelling ? (
+                  <>
+                    <Loader2
+                      className="react-icon animate-spin"
+                      aria-hidden="true"
+                    />
+                    <span>Cancelling...</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="react-icon" aria-hidden="true" />
+                    <span>Yes, Cancel Order</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

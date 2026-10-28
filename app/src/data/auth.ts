@@ -1,6 +1,6 @@
 // src/data/auth.ts
 
-import { supabase } from '../lib/supabaseClient';
+import { supabase, supabaseAdmin } from '../lib/supabaseClient';
 
 // ============================================
 // TYPES
@@ -14,11 +14,13 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   studentId?: string;
+  course?: string;
+  yearLevel?: string;
+  dateOfBirth?: string;
   profilePicture?: string;
   emailVerified: boolean;
 }
 
-/** Shape returned by Supabase auth — user may be null */
 interface SupabaseAuthUser {
   id: string;
   email?: string;
@@ -35,31 +37,116 @@ export interface RegisterPayload {
   email: string;
   password: string;
   studentId: string;
+  course: string;
+  yearLevel: string;
+  dateOfBirth: string;
 }
 
 // ============================================
-// REGISTER
+// ✅ CUSTOM ERROR TYPES
 // ============================================
 
-/**
- * Creates a new Supabase user. Supabase automatically sends a
- * 6-digit OTP to the user's email for verification.
- */
+export class EmailAlreadyRegisteredError extends Error {
+  constructor(message = 'This email is already registered. Please sign in instead.') {
+    super(message);
+    this.name = 'EmailAlreadyRegisteredError';
+  }
+}
+
+export class StudentIdAlreadyRegisteredError extends Error {
+  constructor(message = 'This Student ID is already registered. Please sign in instead or contact support.') {
+    super(message);
+    this.name = 'StudentIdAlreadyRegisteredError';
+  }
+}
+
+// ============================================
+// ✅ REGISTER — with pre-check
+// ============================================
+
 export async function registerUser(payload: RegisterPayload) {
+  const normalizedEmail = payload.email.trim().toLowerCase();
+  const normalizedStudentId = payload.studentId.trim();
+  const normalizedCourse = payload.course.trim();
+  const normalizedYearLevel = payload.yearLevel.trim();
+  const normalizedDob = payload.dateOfBirth.trim();
+
+  /* ✅ VALIDATION — lahat ng fields required */
+  if (
+    !payload.name.trim() ||
+    !normalizedEmail ||
+    !payload.password ||
+    !normalizedStudentId ||
+    !normalizedCourse ||
+    !normalizedYearLevel ||
+    !normalizedDob
+  ) {
+    throw new Error('All fields are required. Please complete the form.');
+  }
+
+  /* ✅ PRE-CHECK #1: Existing email? */
+  const { data: existingEmail, error: emailCheckError } = await supabase
+    .from('profiles')
+    .select('id, email')
+    .ilike('email', normalizedEmail)
+    .maybeSingle();
+
+  if (emailCheckError) {
+    console.warn('[registerUser] Email pre-check failed:', emailCheckError);
+  }
+
+  if (existingEmail) {
+    throw new EmailAlreadyRegisteredError();
+  }
+
+  /* ✅ PRE-CHECK #2: Existing student ID? */
+  const { data: existingStudentId, error: studentIdCheckError } = await supabase
+    .from('profiles')
+    .select('id, student_id')
+    .eq('student_id', normalizedStudentId)
+    .maybeSingle();
+
+  if (studentIdCheckError) {
+    console.warn('[registerUser] Student ID pre-check failed:', studentIdCheckError);
+  }
+
+  if (existingStudentId) {
+    throw new StudentIdAlreadyRegisteredError();
+  }
+
+  /* ✅ PROCEED: signUp — isama lahat ng metadata */
   const { data, error } = await supabase.auth.signUp({
-    email: payload.email.trim().toLowerCase(),
+    email: normalizedEmail,
     password: payload.password,
     options: {
       data: {
         name: payload.name.trim(),
         role: 'Student',
-        student_id: payload.studentId.trim(),
+        student_id: normalizedStudentId,
+        course_strand: normalizedCourse,
+        year_level: normalizedYearLevel,
+        date_of_birth: normalizedDob,
       },
     },
   });
 
-  if (error) throw new Error(error.message);
-  if (!data.user) throw new Error('Registration failed. Please try again.');
+  if (error) {
+    const message = error.message.toLowerCase();
+
+    if (
+      message.includes('already registered') ||
+      message.includes('already exists') ||
+      message.includes('user already registered')
+    ) {
+      throw new EmailAlreadyRegisteredError();
+    }
+
+    throw new Error(error.message);
+  }
+
+  if (!data.user) {
+    throw new Error('Registration failed. Please try again.');
+  }
 
   return data;
 }
@@ -68,10 +155,6 @@ export async function registerUser(payload: RegisterPayload) {
 // VERIFY OTP
 // ============================================
 
-/**
- * Verifies the 6-digit OTP from the registration email.
- * On success, Supabase creates a session automatically.
- */
 export async function verifyOtp(
   email: string,
   token: string,
@@ -107,7 +190,7 @@ export async function resendOtp(email: string) {
 }
 
 // ============================================
-// LOGIN
+// ✅ LOGIN — USER (regular)
 // ============================================
 
 export async function loginUser(
@@ -131,7 +214,31 @@ export async function loginUser(
 }
 
 // ============================================
-// LOGOUT
+// ✅ LOGIN — ADMIN (separate client)
+// ============================================
+
+export async function loginAdmin(
+  email: string,
+  password: string,
+): Promise<VerifyOtpResult> {
+  const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password,
+  });
+
+  if (error) throw new Error(error.message);
+  if (!data.user || !data.session) {
+    throw new Error('Login failed. Please try again.');
+  }
+
+  return {
+    user: data.user,
+    session: data.session,
+  };
+}
+
+// ============================================
+// ✅ LOGOUT — USER
 // ============================================
 
 export async function logoutUser() {
@@ -140,13 +247,107 @@ export async function logoutUser() {
 }
 
 // ============================================
-// GET CURRENT SESSION
+// ✅ LOGOUT — ADMIN
+// ============================================
+
+export async function logoutAdmin() {
+  const { error } = await supabaseAdmin.auth.signOut();
+  if (error) throw new Error(error.message);
+}
+
+// ============================================
+// ✅ GET CURRENT SESSION — USER
 // ============================================
 
 export async function getCurrentSession() {
   const { data, error } = await supabase.auth.getSession();
   if (error) throw new Error(error.message);
   return data.session;
+}
+
+// ============================================
+// ✅ GET CURRENT SESSION — ADMIN
+// ============================================
+
+export async function getCurrentAdminSession() {
+  const { data, error } = await supabaseAdmin.auth.getSession();
+  if (error) throw new Error(error.message);
+  return data.session;
+}
+
+// ============================================
+// ✅ GET USER
+// ============================================
+
+export async function getCurrentUser() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+// ============================================
+// ✅ GET ADMIN
+// ============================================
+
+export async function getCurrentAdmin() {
+  const { data: { user } } = await supabaseAdmin.auth.getUser();
+  return user;
+}
+
+// ============================================
+// ✅ PASSWORD RESET — STEP 1: Send reset code
+// ============================================
+
+export async function sendPasswordResetEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+  );
+
+  if (error) throw new Error(error.message);
+}
+
+// ============================================
+// ✅ PASSWORD RESET — STEP 2: Verify reset OTP
+// ============================================
+
+export async function verifyPasswordResetOtp(
+  email: string,
+  token: string,
+): Promise<VerifyOtpResult> {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: token.trim(),
+    type: 'recovery',
+  });
+
+  if (error) throw new Error(error.message);
+  if (!data.user) {
+    throw new Error('Reset code is invalid or expired.');
+  }
+
+  return {
+    user: data.user,
+    session: data.session,
+  };
+}
+
+// ============================================
+// ✅ PASSWORD RESET — STEP 3: Update password
+// ============================================
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) throw new Error(error.message);
+}
+
+// ============================================
+// ✅ PASSWORD RESET — Resend reset code
+// ============================================
+
+export async function resendPasswordResetEmail(email: string): Promise<void> {
+  await sendPasswordResetEmail(email);
 }
 
 // ============================================
@@ -161,7 +362,10 @@ export function mapSupabaseUser(user: SupabaseAuthUser): AuthUser {
     email: user.email || '',
     role: ((meta.role as string) || 'Student') as UserRole,
     studentId: meta.student_id as string | undefined,
+    course: meta.course_strand as string | undefined,
+    yearLevel: meta.year_level as string | undefined,
+    dateOfBirth: meta.date_of_birth as string | undefined,
     profilePicture: meta.profile_picture as string | undefined,
     emailVerified: true,
   };
-}
+} 

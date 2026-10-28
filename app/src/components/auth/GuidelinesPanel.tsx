@@ -1,3 +1,5 @@
+// src/components/auth/GuidelinesPanel.tsx
+
 import { useState } from 'react';
 import {
   ChevronDown,
@@ -5,6 +7,8 @@ import {
   HelpCircle,
   ShieldCheck,
   UserRound,
+  Clock,      // ✅ BAGONG IDAGDAG
+  Package,    // ✅ BAGONG IDAGDAG
 } from 'lucide-react';
 import type { GuidelineItem } from './authTypes';
 
@@ -27,6 +31,20 @@ const guidelines: GuidelineItem[] = [
     body: 'Double-check your email, student ID number, and password before creating an account so order updates reach you.',
     icon: 'review',
   },
+  // ✅ BAGONG ITEM — Campus pickup
+  {
+    id: 'pickup',
+    label: 'Campus pickup only',
+    body: 'All items are for pickup at the SJCM Supply Office. Bring a valid school ID when collecting your reservation.',
+    icon: 'pickup',
+  },
+  // ✅ BAGONG ITEM — Order updates
+  {
+    id: 'updates',
+    label: 'Track your reservation',
+    body: 'Check your dashboard for live stock updates and pickup status. You will also receive email notifications for order changes.',
+    icon: 'updates',
+  },
   {
     id: 'support',
     label: 'Need help?',
@@ -43,31 +61,40 @@ function GuidelineIcon({ icon }: { icon: GuidelineItem['icon'] }) {
         ? ShieldCheck
         : icon === 'review'
           ? FileText
-          : icon === 'support'
-            ? HelpCircle
-            : ShieldCheck;
+          : icon === 'pickup'
+            ? Package           // ✅ BAGONG ICON
+            : icon === 'updates'
+              ? Clock           // ✅ BAGONG ICON
+              : HelpCircle;
 
   return <Icon className="react-icon" aria-hidden="true" />;
 }
 
 export default function GuidelinesPanel() {
-  const [openId, setOpenId] = useState<GuidelineItem['id'] | null>('account');
+  const [openId, setOpenId] = useState<GuidelineItem['id'] | null>(null);
 
   return (
-    <section className="auth-guidelines" aria-labelledby="auth-guidelines-title">
+    <section
+      className="auth-guidelines"
+      aria-labelledby="auth-guidelines-title"
+    >
       <header className="auth-section-heading">
         <p className="auth-section-heading__eyebrow">Start here</p>
         <h2 id="auth-guidelines-title">System Guidelines</h2>
         <p>Keep your SJCM account secure and ready for campus pickup.</p>
       </header>
 
-      <div className="auth-guidelines__list">
-        {guidelines.map((item) => {
+      <ol className="auth-guidelines__list">
+        {guidelines.map((item, index) => {
           const isOpen = item.id === openId;
           const panelId = `guideline-panel-${item.id}`;
+          const number = String(index + 1).padStart(2, '0');
 
           return (
-            <article className={`auth-guideline ${isOpen ? 'is-open' : ''}`} key={item.id}>
+            <li
+              key={item.id}
+              className={`auth-guideline ${isOpen ? 'is-open' : ''}`}
+            >
               <button
                 id={`${panelId}-trigger`}
                 className="auth-guideline__trigger"
@@ -76,11 +103,15 @@ export default function GuidelinesPanel() {
                 aria-controls={panelId}
                 onClick={() => setOpenId(isOpen ? null : item.id)}
               >
+                <span className="auth-guideline__number">{number}</span>
                 <span className="auth-guideline__icon">
                   <GuidelineIcon icon={item.icon} />
                 </span>
                 <span className="auth-guideline__label">{item.label}</span>
-                <ChevronDown className="auth-guideline__chevron" aria-hidden="true" />
+                <ChevronDown
+                  className="auth-guideline__chevron"
+                  aria-hidden="true"
+                />
               </button>
               <div
                 id={panelId}
@@ -91,10 +122,10 @@ export default function GuidelinesPanel() {
               >
                 <p>{item.body}</p>
               </div>
-            </article>
+            </li>
           );
         })}
-      </div>
+      </ol>
     </section>
   );
 }

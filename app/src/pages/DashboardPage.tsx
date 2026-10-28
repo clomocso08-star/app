@@ -1,6 +1,6 @@
 // src/pages/DashboardPage.tsx
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowUpRight,
@@ -16,8 +16,8 @@ import {
   User,
   Shield,
   ShoppingCart,
-  Menu,
   ChevronRight,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../store';
 import { useToast } from '../toast';
@@ -31,10 +31,21 @@ import {
   getOrderTotal,
 } from '../services';
 import { fetchOrders } from '../services/orders';
+import {
+  fetchNotifications,
+  markNotificationAsRead,
+} from '../services/notifications';
 import ProductImage from '../components/ProductImage';
 import type { Order, Product } from '../types';
+import type { Notification } from '../types/notification';
 
-type StatusFilter = 'ALL' | 'Pending' | 'Processing' | 'Ready for Pickup' | 'Claimed' | 'Cancelled';
+type StatusFilter =
+  | 'ALL'
+  | 'Pending'
+  | 'Processing'
+  | 'Ready for Pickup'
+  | 'Claimed'
+  | 'Cancelled';
 
 const sideNavItems = [
   { to: '/', label: 'Home', icon: Home, end: true },
@@ -45,9 +56,9 @@ const sideNavItems = [
   { to: '/settings', label: 'Settings', icon: Shield },
 ];
 
-// ============================================
-// ORDER CARD — modern layout with product image
-// ============================================
+/* ============================================
+   ORDER CARD
+============================================ */
 function OrderCard({
   order,
   products,
@@ -57,16 +68,17 @@ function OrderCard({
 }) {
   const badge = getOrderStatusBadge(getOrderStatus(order));
   const items = order.items ?? [];
-  const itemCount = items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+  const itemCount = items.reduce(
+    (sum, item) => sum + (Number(item.qty) || 0),
+    0
+  );
   const status = getOrderStatus(order);
 
-  // Progress steps
   const isOrdered = true;
   const isProcessing = ['Processing', 'Ready for Pickup', 'Claimed'].includes(status);
   const isReady = ['Ready for Pickup', 'Claimed'].includes(status);
   const isClaimed = status === 'Claimed';
 
-  // First item image para sa thumbnail
   const firstItem = items[0];
   const firstProduct = firstItem
     ? products.find((p) => p.id === firstItem.id)
@@ -85,7 +97,6 @@ function OrderCard({
 
   return (
     <li className="order-card">
-      {/* LEFT: Product image thumbnail */}
       <div className="order-card__thumb">
         {firstProduct ? (
           <ProductImage
@@ -99,7 +110,6 @@ function OrderCard({
         )}
       </div>
 
-      {/* MIDDLE: Order info + progress */}
       <div className="order-card__body">
         <div className="order-card__head">
           <span className="order-card__id">Order #{getOrderId(order)}</span>
@@ -120,12 +130,15 @@ function OrderCard({
           </span>
         </div>
 
-        {/* Progress steps */}
         <div className="order-card__progress">
           <span className={`order-progress-step ${isOrdered ? 'is-done' : ''}`}>
             <span className="order-progress-step__dot" />
             <span className="order-progress-step__label">Ordered</span>
-            {isOrdered && <span className="order-progress-step__date">{formatDate(getOrderDate(order))}</span>}
+            {isOrdered && (
+              <span className="order-progress-step__date">
+                {formatDate(getOrderDate(order))}
+              </span>
+            )}
           </span>
           <span className={`order-progress-step ${isProcessing ? 'is-done' : ''}`}>
             <span className="order-progress-step__dot" />
@@ -142,9 +155,10 @@ function OrderCard({
         </div>
       </div>
 
-      {/* RIGHT: Price + View details */}
       <div className="order-card__right">
-        <div className="order-card__price">{formatPrice(getOrderTotal(order))}</div>
+        <div className="order-card__price">
+          {formatPrice(getOrderTotal(order))}
+        </div>
         <div className="order-card__payment">
           Payment: {order.paymentMethod || 'Cash on pickup'}
         </div>
@@ -160,34 +174,80 @@ function OrderCard({
   );
 }
 
+/* ============================================
+   DASHBOARD PAGE
+============================================ */
 export default function DashboardPage() {
   const { session } = useApp();
   const toast = useToast();
   const navigate = useNavigate();
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
-  const [noticeDismissed, setNoticeDismissed] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSidebarPinned, setIsSidebarPinned] = useState(false);
 
-  const sidebarRef = useRef<HTMLElement>(null);
-  const hoverZoneRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<number | null>(null);
+  /* ✅ GATE — check kung may unverified order */
+  const [isCheckingVerification, setIsCheckingVerification] = useState(true);
+  const [hasPendingVerification, setHasPendingVerification] = useState(false);
 
-  // Redirect kapag walang session
+  /* ✅ BANNER — galing sa Supabase notifications */
+  const [pickupNotification, setPickupNotification] =
+    useState<Notification | null>(null);
+
+  /* ============================================
+     ✅ GATE 1: CHECK VERIFICATION BEFORE RENDER
+     Kung may unverified order → redirect sa /verify-email
+  ============================================ */
+  useEffect(() => {
+    if (!session) {
+      setIsCheckingVerification(false);
+      return;
+    }
+
+    /* ✅ Get last order ID from sessionStorage */
+    const lastOrderId = sessionStorage.getItem('lastOrderId');
+    const pendingOrderId = sessionStorage.getItem('pendingOrderId');
+    const checkOrderId = lastOrderId || pendingOrderId;
+
+    if (!checkOrderId) {
+      /* Walang pending order — OK lang pumasok */
+      setIsCheckingVerification(false);
+      setHasPendingVerification(false);
+      return;
+    }
+
+    /* ✅ Check kung naka-verify na */
+    const isVerified = sessionStorage.getItem(`order_verified_${checkOrderId}`) === 'true';
+
+    if (!isVerified) {
+      /* ❌ Hindi naka-verify — hindi papasukin */
+      console.log('[Dashboard] Order not verified, redirecting to verify-email');
+      setHasPendingVerification(true);
+      setIsCheckingVerification(false);
+      return;
+    }
+
+    /* ✅ Verified — OK lang pumasok */
+    setHasPendingVerification(false);
+    setIsCheckingVerification(false);
+  }, [session]);
+
+  /* Redirect kapag walang session */
   useEffect(() => {
     if (!session) {
       toast('Please sign in to view your dashboard.', 'warning');
-      const timer = window.setTimeout(() => navigate('/login', { replace: true }), 500);
+      const timer = window.setTimeout(
+        () => navigate('/login', { replace: true }),
+        500
+      );
       return () => window.clearTimeout(timer);
     }
   }, [session, navigate, toast]);
 
-  // Fetch orders + products
+  /* Fetch orders + products — ONLY if verified */
   useEffect(() => {
-    if (!session) {
+    if (!session || hasPendingVerification) {
       setOrders([]);
       setIsLoadingOrders(false);
       return;
@@ -215,76 +275,121 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [session, hasPendingVerification]);
 
-  // Hover-to-open sidebar
+  /* ✅ BANNER — fetch latest unread pickup notification */
   useEffect(() => {
-    const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
-    if (!isDesktop()) return;
+    if (!session?.id || hasPendingVerification) {
+      setPickupNotification(null);
+      return;
+    }
 
-    const openSidebar = () => {
-      if (closeTimerRef.current) {
-        window.clearTimeout(closeTimerRef.current);
-        closeTimerRef.current = null;
+    let cancelled = false;
+
+    const loadPickupNotification = async () => {
+      try {
+        const notifications = await fetchNotifications(session.id);
+        const latestPickup = notifications.find(
+          (n) => n.type === 'pickup' && !n.read
+        );
+        if (!cancelled) {
+          setPickupNotification(latestPickup ?? null);
+        }
+      } catch (error) {
+        console.error(
+          '[Dashboard] Failed to fetch pickup notification:',
+          error
+        );
+        if (!cancelled) setPickupNotification(null);
       }
-      setIsSidebarOpen(true);
     };
 
-    const scheduleClose = () => {
-      if (isSidebarPinned) return;
-      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = window.setTimeout(() => {
-        setIsSidebarOpen(false);
-      }, 150);
+    loadPickupNotification();
+
+    const handleUpdate = (e: CustomEvent) => {
+      const { userId } = e.detail;
+      if (!userId || userId === session.id) {
+        loadPickupNotification();
+      }
     };
 
-    const zone = hoverZoneRef.current;
-    const sidebar = sidebarRef.current;
-    if (!zone || !sidebar) return;
-
-    zone.addEventListener('mouseenter', openSidebar);
-    sidebar.addEventListener('mouseenter', openSidebar);
-    sidebar.addEventListener('mouseleave', scheduleClose);
-    zone.addEventListener('mouseleave', scheduleClose);
+    window.addEventListener(
+      'notifications-updated',
+      handleUpdate as EventListener
+    );
 
     return () => {
-      zone.removeEventListener('mouseenter', openSidebar);
-      sidebar.removeEventListener('mouseenter', openSidebar);
-      sidebar.removeEventListener('mouseleave', scheduleClose);
-      zone.removeEventListener('mouseleave', scheduleClose);
-      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+      cancelled = true;
+      window.removeEventListener(
+        'notifications-updated',
+        handleUpdate as EventListener
+      );
     };
-  }, [isSidebarPinned, session]);
+  }, [session?.id, hasPendingVerification]);
 
   const userOrders = useMemo(
-    () => (session ? orders.filter((order) => order.userId === session.id) : []),
+    () =>
+      session ? orders.filter((order) => order.userId === session.id) : [],
     [orders, session]
   );
 
   const filteredOrders = useMemo(
     () =>
       userOrders.filter(
-        (order) => statusFilter === 'ALL' || getOrderStatus(order) === statusFilter
+        (order) =>
+          statusFilter === 'ALL' || getOrderStatus(order) === statusFilter
       ),
     [userOrders, statusFilter]
   );
 
-  const { pendingCount, totalSpent, completedCount, cancelledCount } = useMemo(
-    () => ({
-      pendingCount: userOrders.filter((order) =>
-        ['Pending', 'Processing'].includes(getOrderStatus(order))
-      ).length,
-      totalSpent: userOrders.reduce((sum, order) => sum + getOrderTotal(order), 0),
-      completedCount: userOrders.filter((order) => getOrderStatus(order) === 'Claimed').length,
-      cancelledCount: userOrders.filter((order) => getOrderStatus(order) === 'Cancelled').length,
-    }),
-    [userOrders]
-  );
+  const { pendingCount, totalSpent, completedCount, cancelledCount } =
+    useMemo(
+      () => ({
+        pendingCount: userOrders.filter((order) =>
+          ['Pending', 'Processing'].includes(getOrderStatus(order))
+        ).length,
+        totalSpent: userOrders.reduce(
+          (sum, order) => sum + getOrderTotal(order),
+          0
+        ),
+        completedCount: userOrders.filter(
+          (order) => getOrderStatus(order) === 'Claimed'
+        ).length,
+        cancelledCount: userOrders.filter(
+          (order) => getOrderStatus(order) === 'Cancelled'
+        ).length,
+      }),
+      [userOrders]
+    );
 
-  const readyOrder = useMemo(
-    () => userOrders.find((order) => getOrderStatus(order) === 'Ready for Pickup'),
-    [userOrders]
-  );
+  const handleDismissBanner = async () => {
+    if (!pickupNotification) return;
+
+    setPickupNotification(null);
+
+    try {
+      await markNotificationAsRead(pickupNotification.id);
+    } catch (error) {
+      console.error('[Dashboard] Failed to dismiss banner:', error);
+      setPickupNotification(pickupNotification);
+    }
+  };
+
+  /* ============================================
+     ✅ LOADING STATE — Habang Nag-Check
+  ============================================ */
+  if (isCheckingVerification) {
+    return (
+      <div className="dashboard-shell">
+        <div className="dashboard-main">
+          <div className="dashboard-verify-loading">
+            <Clock3 className="react-icon animate-spin" aria-hidden="true" />
+            <p>Loading your dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!session) {
     return (
@@ -294,47 +399,81 @@ export default function DashboardPage() {
     );
   }
 
-  const getInitials = () => {
-    const name = session.name || '';
+  /* ============================================
+     ✅ GATE 2: HINDI NAKA-VERIFY — Show Gate Screen
+  ============================================ */
+  if (hasPendingVerification) {
+    const lastOrderId = sessionStorage.getItem('lastOrderId') || sessionStorage.getItem('pendingOrderId');
+    const email = session.email || '';
+
     return (
-      name
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((p) => p[0]?.toUpperCase())
-        .join('') || 'U'
-    );
-  };
+      <div className="dashboard-shell">
+        <div className="dashboard-main">
+          <div className="dashboard-gate">
+            <div className="dashboard-gate__icon">
+              <Lock className="react-icon" aria-hidden="true" />
+            </div>
 
-  return (
-    <div className={`dashboard-shell ${isSidebarOpen ? 'is-sidebar-open' : ''}`}>
-      <div ref={hoverZoneRef} className="dashboard-hover-zone" aria-hidden="true" />
+            <h1 className="dashboard-gate__title">
+              Verify Your Email First
+            </h1>
 
-      <aside ref={sidebarRef} className={`dashboard-sidebar ${isSidebarOpen ? 'is-open' : ''}`}>
-        <div className="dashboard-sidebar__top">
-          <button
-            type="button"
-            className="dashboard-sidebar__pin"
-            onClick={() => setIsSidebarPinned((p) => !p)}
-            aria-label={isSidebarPinned ? 'Unpin sidebar' : 'Pin sidebar'}
-          >
-            {isSidebarPinned ? <X className="react-icon" /> : <ChevronRight className="react-icon" />}
-          </button>
+            <p className="dashboard-gate__description">
+              To protect your account and prevent fake orders, you must
+              verify your email before accessing your order history.
+            </p>
 
-          <div className="dashboard-sidebar__user">
-            <span className="dashboard-sidebar__avatar">
-              {session.profilePicture ? (
-                <img src={session.profilePicture} alt={session.name} />
-              ) : (
-                <span className="dashboard-sidebar__initials">{getInitials()}</span>
-              )}
-            </span>
-            <span className="dashboard-sidebar__user-copy">
-              <span className="dashboard-sidebar__user-name">{session.name}</span>
-              <span className="dashboard-sidebar__user-role">{session.role}</span>
-            </span>
+            <div className="dashboard-gate__info">
+              <div className="dashboard-gate__info-item">
+                <span className="dashboard-gate__info-label">Order ID</span>
+                <strong className="dashboard-gate__info-value">
+                  {lastOrderId}
+                </strong>
+              </div>
+              <div className="dashboard-gate__info-item">
+                <span className="dashboard-gate__info-label">
+                  Verification sent to
+                </span>
+                <strong className="dashboard-gate__info-value">
+                  {email.replace(/(.{2}).*@/, '$1***@')}
+                </strong>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="dashboard-gate__btn dashboard-gate__btn--primary"
+              onClick={() =>
+                navigate(
+                  `/verify-email?order=${encodeURIComponent(lastOrderId || '')}&email=${encodeURIComponent(email)}`
+                )
+              }
+            >
+              <Shield className="react-icon" aria-hidden="true" />
+              <span>Verify Email Now</span>
+            </button>
+
+            <Link to="/catalog" className="dashboard-gate__btn dashboard-gate__btn--ghost">
+              <Store className="react-icon" aria-hidden="true" />
+              <span>Back to Catalog</span>
+            </Link>
+
+            <p className="dashboard-gate__hint">
+              💡 Check your email inbox for the 6-digit verification code.
+            </p>
           </div>
+        </div>
+      </div>
+    );
+  }
 
+  /* ============================================
+     ✅ RENDER — User Is Verified
+  ============================================ */
+  return (
+    <div className="dashboard-shell">
+      <aside className="dashboard-sidebar">
+        <div className="dashboard-sidebar__top">
           <nav className="dashboard-sidebar__nav">
             {sideNavItems.map((item) => {
               const Icon = item.icon;
@@ -343,8 +482,9 @@ export default function DashboardPage() {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`dashboard-sidebar__item ${isActive ? 'is-active' : ''}`}
-                  onClick={() => setIsSidebarOpen(false)}
+                  className={`dashboard-sidebar__item ${
+                    isActive ? 'is-active' : ''
+                  }`}
                   data-label={item.label}
                 >
                   <Icon className="react-icon" aria-hidden="true" />
@@ -354,54 +494,39 @@ export default function DashboardPage() {
             })}
           </nav>
         </div>
-
-        <div className="dashboard-sidebar__bottom">
-          <p className="dashboard-sidebar__brand">SJCM STORE</p>
-          <p className="dashboard-sidebar__motto">
-            "Official Merchandise
-            <br />
-            for a Stronger SJCM"
-          </p>
-        </div>
       </aside>
 
-      {isSidebarOpen ? (
-        <div className="dashboard-backdrop" onClick={() => setIsSidebarOpen(false)} aria-hidden="true" />
-      ) : null}
-
       <div className="dashboard-main">
-        <button
-          type="button"
-          className="dashboard-mobile-menu"
-          aria-label="Toggle navigation"
-          onClick={() => setIsSidebarOpen((p) => !p)}
-        >
-          {isSidebarOpen ? <X className="react-icon" /> : <Menu className="react-icon" />}
-        </button>
-
         <div className="dashboard-scroll">
-          {readyOrder && !noticeDismissed ? (
+          {/* BANNER */}
+          {pickupNotification ? (
             <div className="notice-banner" role="status">
               <span className="notice-banner__icon">
                 <Bell className="react-icon" aria-hidden="true" />
               </span>
               <div className="notice-banner__body">
-                <p className="notice-banner__title">You have 1 order ready for pickup!</p>
+                <p className="notice-banner__title">
+                  {pickupNotification.title}
+                </p>
                 <p className="notice-banner__description">
-                  Your order #{getOrderId(readyOrder)} is ready at {session.organization || 'SJCM Main Campus'}.
+                  {pickupNotification.message}
                 </p>
               </div>
-              <Link
-                to={`/orders/${encodeURIComponent(getOrderId(readyOrder))}`}
-                className="notice-banner__action"
-              >
-                View order <ArrowUpRight className="react-icon" aria-hidden="true" />
-              </Link>
+              {pickupNotification.link && (
+                <Link
+                  to={pickupNotification.link}
+                  className="notice-banner__action"
+                  onClick={handleDismissBanner}
+                >
+                  {pickupNotification.actionLabel || 'View order'}
+                  <ArrowUpRight className="react-icon" aria-hidden="true" />
+                </Link>
+              )}
               <button
                 type="button"
                 className="notice-banner__dismiss"
                 aria-label="Dismiss notification"
-                onClick={() => setNoticeDismissed(true)}
+                onClick={handleDismissBanner}
               >
                 <X className="react-icon" aria-hidden="true" />
               </button>
@@ -433,7 +558,9 @@ export default function DashboardPage() {
             <select
               className="dashboard-toolbar__select"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as StatusFilter)
+              }
               aria-label="Filter by status"
             >
               <option value="ALL">All statuses</option>
@@ -450,14 +577,19 @@ export default function DashboardPage() {
               {isLoadingOrders ? (
                 <div className="dashboard-orders-empty">
                   <Clock3 className="react-icon" aria-hidden="true" />
-                  <p className="dashboard-orders-empty__title">Loading orders...</p>
+                  <p className="dashboard-orders-empty__title">
+                    Loading orders...
+                  </p>
                 </div>
               ) : filteredOrders.length === 0 ? (
                 <div className="dashboard-orders-empty">
                   <PackageOpen className="react-icon" aria-hidden="true" />
-                  <p className="dashboard-orders-empty__title">No reservations found</p>
+                  <p className="dashboard-orders-empty__title">
+                    No reservations found
+                  </p>
                   <p className="dashboard-orders-empty__description">
-                    Your orders will appear here once you place a campus pickup reservation.
+                    Your orders will appear here once you place a campus
+                    pickup reservation.
                   </p>
                   <Link to="/catalog" className="button button--primary">
                     Browse catalog
@@ -466,7 +598,11 @@ export default function DashboardPage() {
               ) : (
                 <ul className="order-list">
                   {filteredOrders.map((order) => (
-                    <OrderCard key={getOrderId(order)} order={order} products={products} />
+                    <OrderCard
+                      key={getOrderId(order)}
+                      order={order}
+                      products={products}
+                    />
                   ))}
                 </ul>
               )}
@@ -474,16 +610,28 @@ export default function DashboardPage() {
               {filteredOrders.length > 0 ? (
                 <div className="order-pagination">
                   <span>
-                    Showing 1–{filteredOrders.length} of {filteredOrders.length} orders
+                    Showing 1–{filteredOrders.length} of{' '}
+                    {filteredOrders.length} orders
                   </span>
                   <div className="order-pagination__controls">
-                    <button type="button" className="order-pagination__btn" disabled>
+                    <button
+                      type="button"
+                      className="order-pagination__btn"
+                      disabled
+                    >
                       ‹
                     </button>
-                    <button type="button" className="order-pagination__btn is-active">
+                    <button
+                      type="button"
+                      className="order-pagination__btn is-active"
+                    >
                       1
                     </button>
-                    <button type="button" className="order-pagination__btn" disabled>
+                    <button
+                      type="button"
+                      className="order-pagination__btn"
+                      disabled
+                    >
                       ›
                     </button>
                   </div>
@@ -497,31 +645,46 @@ export default function DashboardPage() {
                 <ul className="dashboard-summary__list">
                   <li className="dashboard-summary__item">
                     <span className="dashboard-summary__icon">
-                      <ReceiptText className="react-icon" aria-hidden="true" />
+                      <ReceiptText
+                        className="react-icon"
+                        aria-hidden="true"
+                      />
                     </span>
-                    <span className="dashboard-summary__label">Total Orders</span>
-                    <strong className="dashboard-summary__value">{userOrders.length}</strong>
+                    <span className="dashboard-summary__label">
+                      Total Orders
+                    </span>
+                    <strong className="dashboard-summary__value">
+                      {userOrders.length}
+                    </strong>
                   </li>
                   <li className="dashboard-summary__item">
                     <span className="dashboard-summary__icon dashboard-summary__icon--success">
                       <Package className="react-icon" aria-hidden="true" />
                     </span>
                     <span className="dashboard-summary__label">Completed</span>
-                    <strong className="dashboard-summary__value">{completedCount}</strong>
+                    <strong className="dashboard-summary__value">
+                      {completedCount}
+                    </strong>
                   </li>
                   <li className="dashboard-summary__item">
                     <span className="dashboard-summary__icon dashboard-summary__icon--warning">
                       <Clock3 className="react-icon" aria-hidden="true" />
                     </span>
-                    <span className="dashboard-summary__label">Processing</span>
-                    <strong className="dashboard-summary__value">{pendingCount}</strong>
+                    <span className="dashboard-summary__label">
+                      Processing
+                    </span>
+                    <strong className="dashboard-summary__value">
+                      {pendingCount}
+                    </strong>
                   </li>
                   <li className="dashboard-summary__item">
                     <span className="dashboard-summary__icon dashboard-summary__icon--danger">
                       <X className="react-icon" aria-hidden="true" />
                     </span>
                     <span className="dashboard-summary__label">Cancelled</span>
-                    <strong className="dashboard-summary__value">{cancelledCount}</strong>
+                    <strong className="dashboard-summary__value">
+                      {cancelledCount}
+                    </strong>
                   </li>
                 </ul>
 

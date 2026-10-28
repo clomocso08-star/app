@@ -4,12 +4,12 @@ import { create } from 'zustand';
 import type { Notification } from '../types/notification';
 import { supabase } from '../lib/supabaseClient';
 import {
-  fetchNotifications,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification as deleteNotificationService,
-  clearAllNotifications,
-} from '../services/notifications';
+  fetchNotifications as fetchUserNotifications,
+  markNotificationAsRead as markUserNotificationAsRead,
+  markAllNotificationsAsRead as markAllUserNotificationsAsRead,
+  deleteNotification as deleteUserNotification,
+  clearAllNotifications as clearAllUserNotifications,
+} from '../services/notifications'; // ✅ ITINAMA ANG IMPORT
 import { invalidateCache, setCache } from '../utils/cache';
 
 interface NotificationStore {
@@ -17,7 +17,7 @@ interface NotificationStore {
   unreadCount: number;
   isLoading: boolean;
   realtimeChannel: ReturnType<typeof supabase.channel> | null;
-  loadNotifications: (userId: string) => Promise<void>;
+  loadNotifications: (userId: string, forceRefresh?: boolean) => Promise<void>;
   subscribeToRealtime: (userId: string) => void;
   unsubscribeFromRealtime: () => void;
   markAsRead: (id: string) => Promise<void>;
@@ -34,41 +34,53 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   isLoading: false,
   realtimeChannel: null,
 
-  // ============================================
-  // LOAD — with cache
-  // ============================================
-  loadNotifications: async (userId: string) => {
+  loadNotifications: async (userId: string, forceRefresh = false) => {
     set({ isLoading: true });
-    const notifications = await fetchNotifications(userId);
-    const unreadCount = notifications.filter((n) => !n.read).length;
-    set({ notifications, unreadCount, isLoading: false });
 
-    // ✅ Also save to cache
-    setCache(`notifications_${userId}`, notifications, 2 * 60 * 1000);
+    try {
+      if (forceRefresh) {
+        invalidateCache(`user_notifications_${userId}`);
+        console.log('[Notifications] 🔄 Force refresh — cache cleared');
+      }
+
+      const notifications = await fetchUserNotifications(userId);
+      const unreadCount = notifications.filter((n) => !n.read).length;
+
+      set({ notifications, unreadCount, isLoading: false });
+
+      console.log(
+        `[Notifications] ✅ Loaded ${notifications.length} notifications (${unreadCount} unread)`
+      );
+
+      setCache(`user_notifications_${userId}`, notifications, 2 * 60 * 1000);
+    } catch (err) {
+      console.error('[Notifications] ❌ Load failed:', err);
+      set({ isLoading: false });
+    }
   },
 
-  // ============================================
-  // REAL-TIME SUBSCRIPTION
-  // ============================================
   subscribeToRealtime: (userId: string) => {
     const existing = get().realtimeChannel;
     if (existing) {
+      console.log('[Notifications] Removing existing channel');
       supabase.removeChannel(existing);
     }
 
+    console.log('[Notifications] 📡 Subscribing to realtime for user:', userId);
+
     const channel = supabase
-      .channel(`notifications-${userId}`)
+      .channel(`user-notifications-${userId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'notifications',
+          table: 'user_notifications',
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          // ✅ Invalidate cache sa real-time
-          invalidateCache(`notifications_${userId}`);
+          console.log('[Notifications] 🔔 REALTIME INSERT:', payload.new);
+          invalidateCache(`user_notifications_${userId}`);
 
           const newNotification: Notification = {
             id: payload.new.id,
@@ -90,11 +102,12 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'notifications',
+          table: 'user_notifications',
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          invalidateCache(`notifications_${userId}`);
+          console.log('[Notifications] 🔔 REALTIME UPDATE:', payload.new);
+          invalidateCache(`user_notifications_${userId}`);
 
           set((state) => {
             const notifications = state.notifications.map((n) =>
@@ -117,11 +130,12 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
         {
           event: 'DELETE',
           schema: 'public',
-          table: 'notifications',
+          table: 'user_notifications',
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          invalidateCache(`notifications_${userId}`);
+          console.log('[Notifications] 🔔 REALTIME DELETE:', payload.old);
+          invalidateCache(`user_notifications_${userId}`);
 
           set((state) => {
             const notifications = state.notifications.filter(
@@ -132,7 +146,9 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Notifications] 📡 Subscription status:', status);
+      });
 
     set({ realtimeChannel: channel });
   },
@@ -140,6 +156,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   unsubscribeFromRealtime: () => {
     const channel = get().realtimeChannel;
     if (channel) {
+      console.log('[Notifications] 🧹 Unsubscribing from realtime');
       supabase.removeChannel(channel);
       set({ realtimeChannel: null });
     }
@@ -166,7 +183,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     });
 
     try {
-      await markNotificationAsRead(id);
+      await markUserNotificationAsRead(id);
     } catch (error) {
       console.error('[Notifications] Failed to mark as read:', error);
     }
@@ -179,7 +196,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     }));
 
     try {
-      await markAllNotificationsAsRead(userId);
+      await markAllUserNotificationsAsRead(userId);
     } catch (error) {
       console.error('[Notifications] Failed to mark all as read:', error);
     }
@@ -193,7 +210,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     });
 
     try {
-      await deleteNotificationService(id);
+      await deleteUserNotification(id);
     } catch (error) {
       console.error('[Notifications] Failed to delete:', error);
     }
@@ -203,10 +220,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     set({ notifications: [], unreadCount: 0 });
 
     try {
-      await clearAllNotifications(userId);
+      await clearAllUserNotifications(userId);
     } catch (error) {
       console.error('[Notifications] Failed to clear all:', error);
-      const notifications = await fetchNotifications(userId);
+      const notifications = await fetchUserNotifications(userId);
       const unreadCount = notifications.filter((n) => !n.read).length;
       set({ notifications, unreadCount });
       throw error;

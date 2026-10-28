@@ -1,6 +1,6 @@
 // src/pages/CatalogPage.tsx
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   PackageX,
@@ -14,19 +14,26 @@ import {
   Store,
   ChevronLeft,
   ChevronRight,
+  SlidersHorizontal,
   X,
+  Lock,
 } from 'lucide-react';
 import { useProducts, useApp } from '../store';
 import { useToast } from '../toast';
 import { useNotificationStore } from '../store/notificationStore';
+import { useFavoritesStore } from '../store/favoritesStore';
 import ProductImage from '../components/ProductImage';
+import MobileFilterDrawer from '../components/catalog/MobileFilterDrawer';
+import MobileProductCard from '../components/catalog/MobileProductCard';
 import { formatPrice, getStockBadge } from '../services';
-import { toggleFavorite, fetchFavorites } from '../services/favorites';
 import { createNotification } from '../services/notifications';
+import { canUserOrderProduct } from '../utils/restrictions';
 import type { Product } from '../types';
 
 type StockFilter = 'ALL' | 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
 type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'name';
+
+const ITEMS_PER_PAGE = 10;
 
 const categoryIcons: Record<string, typeof Grid2x2> = {
   ALL: Grid2x2,
@@ -41,62 +48,121 @@ export default function CatalogPage() {
   const products = useProducts();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const resultsRef = useRef<HTMLDivElement>(null);
 
-  // ============================================
-  // STATE — naka-sync sa URL
-  // ============================================
-  const [query, setQuery] = useState(searchParams.get('q') ?? '');
-  const [category, setCategory] = useState(searchParams.get('category') ?? 'ALL');
+  const getUrlSearchTerm = () =>
+    searchParams.get('search') ?? searchParams.get('q') ?? '';
+
+  const [query, setQuery] = useState(getUrlSearchTerm());
+  const [category, setCategory] = useState(
+    searchParams.get('category') ?? 'ALL',
+  );
   const [stock, setStock] = useState<StockFilter>('ALL');
   const [sort, setSort] = useState<SortOption>('featured');
+  const [currentPage, setCurrentPage] = useState(
+    Number(searchParams.get('page')) || 1,
+  );
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
 
-  // ============================================
-  // ✅ CRITICAL: SYNC QUERY MULA URL
-  // ============================================
+  const { session } = useApp();
+  const toast = useToast();
+
+  /* ✅ Global favorites store */
+  const favIds = useFavoritesStore((s) => s.favIds);
+  const loadFavorites = useFavoritesStore((s) => s.loadFavorites);
+  const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
+
   useEffect(() => {
-    const urlQuery = searchParams.get('q') ?? '';
+    if (session?.id) {
+      void loadFavorites(session.id);
+    }
+  }, [session?.id, loadFavorites]);
+
+  useEffect(() => {
+    if (!session?.id) {
+      useFavoritesStore.getState().clearFavorites();
+    }
+  }, [session?.id]);
+
+  /* SYNC MULA URL */
+  useEffect(() => {
+    const urlQuery = getUrlSearchTerm();
     setQuery(urlQuery);
 
     const urlCategory = searchParams.get('category') ?? 'ALL';
     setCategory(urlCategory);
+
+    const urlPage = Number(searchParams.get('page')) || 1;
+    setCurrentPage(urlPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // ============================================
-  // HANDLERS — nag-u-update ng URL
-  // ============================================
+  /* HANDLERS */
+  const setSearchParam = (key: string, value: string | null) => {
+    const next = new URLSearchParams(searchParams);
+
+    if (value === null || value === '') {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
+
+    if (key === 'search') next.delete('q');
+    if (key === 'q') next.delete('search');
+    if (key !== 'page') next.delete('page');
+
+    setSearchParams(next, { replace: true });
+  };
+
   const handleCategoryChange = (value: string) => {
     setCategory(value);
-    if (value === 'ALL') {
-      searchParams.delete('category');
-    } else {
-      searchParams.set('category', value);
-    }
-    setSearchParams(searchParams, { replace: true });
+    setSearchParam('category', value === 'ALL' ? null : value);
+    setCurrentPage(1);
   };
 
   const handleSearchChange = (value: string) => {
     setQuery(value);
-    if (value) {
-      searchParams.set('q', value);
-    } else {
-      searchParams.delete('q');
-    }
-    setSearchParams(searchParams, { replace: true });
+    setSearchParam('search', value || null);
+    setCurrentPage(1);
   };
 
   const handleClearSearch = () => {
     setQuery('');
-    searchParams.delete('q');
-    setSearchParams(searchParams, { replace: true });
+    setSearchParam('search', null);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setSearchParam('page', page <= 1 ? null : String(page));
+
+    if (resultsRef.current) {
+      const top =
+        resultsRef.current.getBoundingClientRect().top +
+        window.scrollY -
+        100;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
   };
 
   const goToProduct = (product: Product) => {
     navigate(`/products/${encodeURIComponent(product.id)}`);
   };
 
-  // ============================================
-  // CATEGORIES LIST
-  // ============================================
+  /* ✅ Mobile favorite toggle — gamitin ang global store */
+  const handleMobileFav = async (product: Product) => {
+    if (!session?.id) {
+      toast('Please sign in to add favorites.', 'warning');
+      return;
+    }
+    try {
+      await toggleFavorite(session.id, product.id);
+    } catch {
+      toast('Failed to update favorites.', 'danger');
+    }
+  };
+
+  /* CATEGORIES LIST */
   const categoryList = useMemo(() => {
     const map = new Map<string, number>();
     products.forEach((p) => {
@@ -108,12 +174,13 @@ export default function CatalogPage() {
       value: label,
       count,
     }));
-    return [{ label: 'All Items', value: 'ALL', count: products.length }, ...list];
+    return [
+      { label: 'All Items', value: 'ALL', count: products.length },
+      ...list,
+    ];
   }, [products]);
 
-  // ============================================
-  // FILTERED + SORTED
-  // ============================================
+  /* FILTERED + SORTED */
   const filtered = useMemo(() => {
     const normalizedQuery = query.toLowerCase().trim();
     const result = products.filter((product) => {
@@ -122,9 +189,11 @@ export default function CatalogPage() {
         product.name.toLowerCase().includes(normalizedQuery) ||
         product.organization.toLowerCase().includes(normalizedQuery) ||
         product.category.toLowerCase().includes(normalizedQuery) ||
-        (product.description?.toLowerCase().includes(normalizedQuery) ?? false);
+        (product.description?.toLowerCase().includes(normalizedQuery) ??
+          false);
 
-      const matchesCategory = category === 'ALL' || product.category === category;
+      const matchesCategory =
+        category === 'ALL' || product.category === category;
 
       const stockCount = Number(product.stock) || 0;
       const matchesStock =
@@ -136,22 +205,193 @@ export default function CatalogPage() {
       return matchesSearch && matchesCategory && matchesStock;
     });
 
-    if (sort === 'price-asc') result.sort((a, b) => Number(a.price) - Number(b.price));
-    else if (sort === 'price-desc') result.sort((a, b) => Number(b.price) - Number(a.price));
-    else if (sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name));
+    if (sort === 'price-asc')
+      result.sort((a, b) => Number(a.price) - Number(b.price));
+    else if (sort === 'price-desc')
+      result.sort((a, b) => Number(b.price) - Number(a.price));
+    else if (sort === 'name')
+      result.sort((a, b) => a.name.localeCompare(b.name));
     return result;
   }, [products, query, category, stock, sort]);
+
+  /* PAGINATION */
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedItems = useMemo(() => {
+    const start = (safePage - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    return filtered.slice(start, end);
+  }, [filtered, safePage]);
+
+  const rangeStart =
+    filtered.length === 0 ? 0 : (safePage - 1) * ITEMS_PER_PAGE + 1;
+  const rangeEnd = Math.min(safePage * ITEMS_PER_PAGE, filtered.length);
+
+  const hasActiveFilters =
+    query !== '' || category !== 'ALL' || stock !== 'ALL';
+
+  const handleResetAll = () => {
+    handleClearSearch();
+    handleCategoryChange('ALL');
+    setStock('ALL');
+    setSort('featured');
+  };
 
   return (
     <main className="catalog-page">
       <div className="catalog-container">
-        {/* HERO */}
-        <header className="catalog-hero">
+        {/* MOBILE TOOLBAR */}
+        <div className="mobile-only mobile-catalog-toolbar">
+          <div className="mobile-catalog-search">
+            <Search className="react-icon" aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Search products..."
+              value={query}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              aria-label="Search products"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                aria-label="Clear search"
+              >
+                <X className="react-icon" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="mobile-catalog-filter-btn"
+            onClick={() => setShowFilterDrawer(true)}
+            aria-label="Open filters"
+          >
+            <SlidersHorizontal className="react-icon" />
+          </button>
+        </div>
+
+        {/* MOBILE CATEGORY CHIPS */}
+        <div className="mobile-only mobile-catalog-chips">
+          {categoryList.map((cat) => (
+            <button
+              key={cat.value}
+              type="button"
+              className={`mobile-catalog-chip ${
+                category === cat.value ? 'is-active' : ''
+              }`}
+              onClick={() => handleCategoryChange(cat.value)}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* MOBILE RESULTS COUNT */}
+        <div className="mobile-only mobile-catalog-meta">
+          {filtered.length === 0
+            ? 'No results'
+            : (
+              <>
+                Showing <strong>{rangeStart}–{rangeEnd}</strong> of{' '}
+                <strong>{filtered.length}</strong> item
+                {filtered.length === 1 ? '' : 's'}
+              </>
+            )}
+        </div>
+
+        {/* MOBILE PRODUCT GRID */}
+        {filtered.length > 0 && (
+          <div className="mobile-only mobile-catalog-grid">
+            {paginatedItems.map((product) => (
+              <MobileProductCard
+                key={product.id}
+                product={product}
+                isFav={favIds.has(product.id)}
+                onToggleFav={handleMobileFav}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* MOBILE PAGINATION */}
+        {filtered.length > ITEMS_PER_PAGE && (
+          <div className="mobile-only mobile-catalog-pagination">
+            <button
+              type="button"
+              className="mobile-catalog-pagination__btn"
+              onClick={() => handlePageChange(safePage - 1)}
+              disabled={safePage <= 1}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="react-icon" />
+            </button>
+
+            <span className="mobile-catalog-pagination__label">
+              Page <strong>{safePage}</strong> of <strong>{totalPages}</strong>
+            </span>
+
+            <button
+              type="button"
+              className="mobile-catalog-pagination__btn"
+              onClick={() => handlePageChange(safePage + 1)}
+              disabled={safePage >= totalPages}
+              aria-label="Next page"
+            >
+              <ChevronRight className="react-icon" />
+            </button>
+          </div>
+        )}
+
+        {/* MOBILE EMPTY STATE */}
+        {filtered.length === 0 && (
+          <div className="mobile-only mobile-catalog-empty">
+            <PackageX className="react-icon" />
+            <h2>
+              {query ? `No results for "${query}"` : 'No merchandise found'}
+            </h2>
+            <p>
+              {query
+                ? 'Try a different search term or clear the search.'
+                : 'Try another search term or adjust the availability filters.'}
+            </p>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                className="mobile-catalog-empty__cta"
+                onClick={handleResetAll}
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* MOBILE FILTER DRAWER */}
+        <MobileFilterDrawer
+          isOpen={showFilterDrawer}
+          onClose={() => setShowFilterDrawer(false)}
+          categories={categoryList}
+          selectedCategory={category}
+          onCategoryChange={handleCategoryChange}
+          stock={stock}
+          onStockChange={setStock}
+          sort={sort}
+          onSortChange={setSort}
+          onReset={handleResetAll}
+          onApply={() => setShowFilterDrawer(false)}
+        />
+
+        {/* DESKTOP — HERO */}
+        <header className="catalog-hero desktop-only">
           <div className="catalog-hero__copy">
             <p className="catalog-hero__kicker">SJCM Store</p>
             <h1 className="catalog-hero__title">Browse the Catalog</h1>
             <p className="catalog-hero__description">
-              Official school uniforms, apparel, and organization merchandise for campus pickup.
+              Official school uniforms, apparel, and organization merchandise
+              for campus pickup.
             </p>
           </div>
           <div className="catalog-hero__quote">
@@ -160,8 +400,8 @@ export default function CatalogPage() {
           </div>
         </header>
 
-        {/* TOOLBAR */}
-        <div className="catalog-toolbar">
+        {/* DESKTOP — TOOLBAR */}
+        <div className="desktop-only catalog-toolbar">
           <div className="catalog-toolbar__search">
             <Search className="react-icon" aria-hidden="true" />
             <input
@@ -182,6 +422,7 @@ export default function CatalogPage() {
               </button>
             )}
           </div>
+
           <select
             className="catalog-toolbar__select"
             value={category}
@@ -197,6 +438,7 @@ export default function CatalogPage() {
                 </option>
               ))}
           </select>
+
           <select
             className="catalog-toolbar__select"
             value={stock}
@@ -208,6 +450,7 @@ export default function CatalogPage() {
             <option value="LOW_STOCK">Low stock</option>
             <option value="OUT_OF_STOCK">Out of stock</option>
           </select>
+
           <select
             className="catalog-toolbar__select"
             value={sort}
@@ -221,26 +464,46 @@ export default function CatalogPage() {
           </select>
         </div>
 
-        {/* SEARCH SUMMARY */}
-        {query && (
-          <div className="catalog-search-summary">
+        {/* DESKTOP — SEARCH SUMMARY */}
+        {(query || category !== 'ALL') && (
+          <div className="desktop-only catalog-search-summary">
             <span>
-              <strong>{filtered.length}</strong>{' '}
-              {filtered.length === 1 ? 'result' : 'results'} for "{query}"
+              {query ? (
+                <>
+                  <strong>{filtered.length}</strong>{' '}
+                  {filtered.length === 1 ? 'result' : 'results'} for{' '}
+                  <em>"{query}"</em>
+                  {category !== 'ALL' && (
+                    <>
+                      {' '}
+                      in <strong>{category}</strong>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <strong>{filtered.length}</strong>{' '}
+                  {filtered.length === 1 ? 'result' : 'results'} in{' '}
+                  <strong>{category}</strong>
+                </>
+              )}
             </span>
-            <button
-              type="button"
-              className="catalog-search-summary__clear"
-              onClick={handleClearSearch}
-            >
-              <X className="react-icon" aria-hidden="true" />
-              <span>Clear</span>
-            </button>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                className="catalog-search-summary__clear"
+                onClick={handleResetAll}
+              >
+                <X className="react-icon" aria-hidden="true" />
+                <span>Clear all</span>
+              </button>
+            )}
           </div>
         )}
 
-        {/* BODY */}
-        <div className="catalog-body">
+        {/* DESKTOP — BODY */}
+        <div className="desktop-only catalog-body" ref={resultsRef}>
           <aside className="catalog-categories">
             <div className="catalog-categories__card">
               <p className="catalog-categories__title">Categories</p>
@@ -252,14 +515,23 @@ export default function CatalogPage() {
                     <li key={cat.value}>
                       <button
                         type="button"
-                        className={`catalog-category ${isActive ? 'is-active' : ''}`}
+                        className={`catalog-category ${
+                          isActive ? 'is-active' : ''
+                        }`}
                         onClick={() => handleCategoryChange(cat.value)}
                       >
                         <span className="catalog-category__icon">
-                          <Icon className="react-icon" aria-hidden="true" />
+                          <Icon
+                            className="react-icon"
+                            aria-hidden="true"
+                          />
                         </span>
-                        <span className="catalog-category__label">{cat.label}</span>
-                        <span className="catalog-category__count">{cat.count}</span>
+                        <span className="catalog-category__label">
+                          {cat.label}
+                        </span>
+                        <span className="catalog-category__count">
+                          {cat.count}
+                        </span>
                       </button>
                     </li>
                   );
@@ -269,7 +541,9 @@ export default function CatalogPage() {
 
             <div className="catalog-categories__note">
               <Store className="react-icon" aria-hidden="true" />
-              <p className="catalog-categories__note-title">Official SJCM Merchandise</p>
+              <p className="catalog-categories__note-title">
+                Official SJCM Merchandise
+              </p>
               <p className="catalog-categories__note-text">
                 Authorized. Quality. For the Saint Jude Community.
               </p>
@@ -281,7 +555,7 @@ export default function CatalogPage() {
               <span>
                 {filtered.length === 0
                   ? 'No results'
-                  : `Showing 1–${filtered.length} of ${filtered.length} item${
+                  : `Showing ${rangeStart}–${rangeEnd} of ${filtered.length} item${
                       filtered.length === 1 ? '' : 's'
                     }`}
               </span>
@@ -294,27 +568,29 @@ export default function CatalogPage() {
               <div className="catalog-empty">
                 <PackageX className="react-icon" aria-hidden="true" />
                 <h2 className="catalog-empty__title">
-                  {query ? `No results for "${query}"` : 'No merchandise found'}
+                  {query
+                    ? `No results for "${query}"`
+                    : 'No merchandise found'}
                 </h2>
                 <p className="catalog-empty__description">
                   {query
                     ? 'Try a different search term or clear the search.'
                     : 'Try another search term or adjust the availability filters.'}
                 </p>
-                {query && (
+                {hasActiveFilters && (
                   <button
                     type="button"
                     className="catalog-empty__cta"
-                    onClick={handleClearSearch}
+                    onClick={handleResetAll}
                   >
                     <X className="react-icon" aria-hidden="true" />
-                    <span>Clear search</span>
+                    <span>Clear all filters</span>
                   </button>
                 )}
               </div>
             ) : (
               <div className="catalog-grid">
-                {filtered.map((product) => (
+                {paginatedItems.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
@@ -324,19 +600,53 @@ export default function CatalogPage() {
               </div>
             )}
 
-            {filtered.length > 0 ? (
+            {filtered.length > ITEMS_PER_PAGE && (
               <div className="catalog-pagination">
-                <button type="button" className="catalog-pagination__btn" disabled>
-                  <ChevronLeft className="react-icon" aria-hidden="true" />
+                <button
+                  type="button"
+                  className="catalog-pagination__btn"
+                  onClick={() => handlePageChange(safePage - 1)}
+                  disabled={safePage <= 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft
+                    className="react-icon"
+                    aria-hidden="true"
+                  />
                 </button>
-                <button type="button" className="catalog-pagination__btn is-active">
-                  1
-                </button>
-                <button type="button" className="catalog-pagination__btn">
-                  <ChevronRight className="react-icon" aria-hidden="true" />
+
+                {Array.from(
+                  { length: totalPages },
+                  (_, i) => i + 1,
+                ).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    className={`catalog-pagination__btn ${
+                      page === safePage ? 'is-active' : ''
+                    }`}
+                    onClick={() => handlePageChange(page)}
+                    aria-label={`Page ${page}`}
+                    aria-current={page === safePage ? 'page' : undefined}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  className="catalog-pagination__btn"
+                  onClick={() => handlePageChange(safePage + 1)}
+                  disabled={safePage >= totalPages}
+                  aria-label="Next page"
+                >
+                  <ChevronRight
+                    className="react-icon"
+                    aria-hidden="true"
+                  />
                 </button>
               </div>
-            ) : null}
+            )}
           </section>
         </div>
       </div>
@@ -344,9 +654,9 @@ export default function CatalogPage() {
   );
 }
 
-// ============================================
-// PRODUCT CARD
-// ============================================
+/* ============================================
+   PRODUCT CARD — desktop
+============================================ */
 function ProductCard({
   product,
   onSelectProduct,
@@ -357,41 +667,56 @@ function ProductCard({
   const { session } = useApp();
   const toast = useToast();
   const addNotification = useNotificationStore((s) => s.addNotification);
-  const [isFav, setIsFav] = useState(false);
+
+  const isFav = useFavoritesStore((s) => s.favIds.has(product.id));
+  const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
   const [isToggling, setIsToggling] = useState(false);
 
   const badge = getStockBadge(product.stock);
   const isOutOfStock = (Number(product.stock) || 0) <= 0;
 
-  // ============================================
-  // ✅ LOAD FAVORITE STATE ON MOUNT
-  // ============================================
-  useEffect(() => {
-    if (!session?.id) return;
+  // 🚨 Gagamit tayo ng custom logic para masigurong nakuha ang tamang course.
+  const getUserCourse = () => {
+    const fromSession = (session as any)?.course;
+    if (fromSession && fromSession.trim() !== '') return fromSession.trim();
 
-    let cancelled = false;
+    const fromStorage = localStorage.getItem('sjc-course');
+    if (fromStorage && fromStorage.trim() !== '') return fromStorage.trim();
 
-    const checkFav = async () => {
-      try {
-        const favorites = await fetchFavorites(session.id);
-        if (!cancelled) {
-          setIsFav(favorites.some((f) => f.product_id === product.id));
+    try {
+      const rawSession = localStorage.getItem('sjc-session');
+      if (rawSession) {
+        const parsed = JSON.parse(rawSession);
+        if (parsed?.course && parsed.course.trim() !== '') {
+          return parsed.course.trim();
         }
-      } catch (error) {
-        console.warn('[Catalog] Failed to check favorite:', error);
       }
-    };
+    } catch (e) {
+      // ignore parsing errors
+    }
 
-    void checkFav();
+    return '';
+  };
 
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.id, product.id]);
+  const userCourse = getUserCourse();
 
-  // ============================================
-  // ✅ TOGGLE FAVORITE — with optimistic notification
-  // ============================================
+  const isAllowed = canUserOrderProduct(
+    userCourse,
+    product.organization,
+    product.category
+  );
+
+  const handleCardClick = () => {
+    if (!isAllowed) {
+      toast(
+        `Restricted: As a ${userCourse || 'student'}, you can't order ${product.organization} items.`,
+        'warning'
+      );
+      return;
+    }
+    onSelectProduct(product);
+  };
+
   const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -400,28 +725,22 @@ function ProductCard({
       toast('Please sign in to add favorites.', 'warning');
       return;
     }
-
     if (isToggling) return;
 
     setIsToggling(true);
-    const wasFav = isFav;
-
-    // Optimistic UI update
-    setIsFav(!wasFav);
 
     try {
-      const nowFav = await toggleFavorite(session.id, product.id, wasFav);
-      setIsFav(nowFav);
+      const nowFav = await toggleFavorite(session.id, product.id);
 
-      // ✅ Kapag nag-add (hindi kapag nag-remove)
       if (nowFav) {
-        // 1️⃣ INSTANT — optimistic add sa notification store
         const notificationId =
           typeof crypto !== 'undefined' && crypto.randomUUID
             ? crypto.randomUUID()
-            : `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            : `temp-${Date.now()}-${Math.random()
+                .toString(36)
+                .substring(2, 9)}`;
 
-        const optimisticNotification = {
+        addNotification({
           id: notificationId,
           userId: session.id,
           type: 'info' as const,
@@ -432,12 +751,8 @@ function ProductCard({
           read: false,
           metadata: { productId: product.id },
           createdAt: new Date().toISOString(),
-        };
+        });
 
-        // Instant bell update
-        addNotification(optimisticNotification);
-
-        // 2️⃣ Save sa Supabase (background)
         try {
           await createNotification(session.id, {
             type: 'info',
@@ -449,8 +764,6 @@ function ProductCard({
           });
         } catch (error) {
           console.error('[Catalog] Failed to save notification:', error);
-          // Hindi na natin i-remove ang optimistic notification
-          // — kasi realtime subscription ay mag-sync ulit
         }
 
         toast(`${product.name} added to favorites!`, 'success');
@@ -459,8 +772,6 @@ function ProductCard({
       }
     } catch (error) {
       console.error('[Catalog] Favorite toggle failed:', error);
-      // Revert on error
-      setIsFav(wasFav);
       toast('Failed to update favorites.', 'danger');
     } finally {
       setIsToggling(false);
@@ -468,16 +779,20 @@ function ProductCard({
   };
 
   return (
-    <article className="catalog-card">
+    <article
+      className={`catalog-card ${
+        !isAllowed ? 'catalog-card--restricted' : ''
+      }`}
+    >
       <div
         className="catalog-card__media"
         role="button"
         tabIndex={0}
-        onClick={() => onSelectProduct(product)}
+        onClick={handleCardClick}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            onSelectProduct(product);
+            handleCardClick();
           }
         }}
         aria-label={`View ${product.name}`}
@@ -488,9 +803,10 @@ function ProductCard({
           width={400}
           height={400}
         />
-        <span className={`catalog-card__badge ${badge.className}`}>{badge.text}</span>
+        <span className={`catalog-card__badge ${badge.className}`}>
+          {badge.text}
+        </span>
 
-        {/* ✅ HEART BUTTON — functional na */}
         <button
           type="button"
           className={`catalog-card__wish ${isFav ? 'is-active' : ''}`}
@@ -504,6 +820,13 @@ function ProductCard({
             aria-hidden="true"
           />
         </button>
+
+        {/* ✅ RESTRICTED BADGE OVERLAY */}
+        {!isAllowed && (
+          <div className="catalog-card__restricted-overlay">
+            <span>🔒 Restricted for your course</span>
+          </div>
+        )}
       </div>
 
       <div className="catalog-card__body">
@@ -515,12 +838,24 @@ function ProductCard({
 
         <button
           type="button"
-          className="catalog-card__cta"
-          onClick={() => onSelectProduct(product)}
-          disabled={isOutOfStock}
+          className={`catalog-card__cta ${
+            !isAllowed ? 'catalog-card__cta--restricted' : ''
+          }`}
+          onClick={handleCardClick}
+          disabled={isOutOfStock || !isAllowed}
         >
-          <ShoppingCart className="react-icon" aria-hidden="true" />
-          <span>{isOutOfStock ? 'Out of Stock' : 'Select Options'}</span>
+          {!isAllowed ? (
+            <Lock className="react-icon" aria-hidden="true" />
+          ) : (
+            <ShoppingCart className="react-icon" aria-hidden="true" />
+          )}
+          <span>
+            {isOutOfStock
+              ? 'Out of Stock'
+              : !isAllowed
+              ? 'Not Allowed for Your Course'
+              : 'Select Options'}
+          </span>
         </button>
       </div>
     </article>

@@ -1,6 +1,7 @@
 // src/types/index.ts
 
-export type UserRole = 'Student' | 'Faculty' | 'School Staff' | 'Admin';
+// ✅ TOTOONG ROLES LANG: Student, Admin, Organization
+export type UserRole = 'Student' | 'Admin' | 'Organization';
 
 export interface Product {
   id: string;
@@ -10,8 +11,9 @@ export interface Product {
   price: number;
   stock: number;
   sizes: string[];
+  /** ✅ Per-size stock tracking */
+  sizeStocks?: Record<string, number>;
   image: string;
-  /** Alt text including photographer attribution for the stock image. */
   imageAlt: string;
   description: string;
 }
@@ -32,6 +34,8 @@ export interface OrderItem {
   price: number;
   qty: number;
   size: string;
+  /** ✅ Para sa product image sa orders list */
+  image?: string;
 }
 
 export interface Order {
@@ -50,6 +54,9 @@ export interface Order {
   claimLocation: string;
   claimDate: string;
   createdAt: string;
+  /** ✅ Para sa cancelled orders */
+  cancellationReason?: string;
+  cancelledAt?: string;
 }
 
 export interface SessionUser {
@@ -61,10 +68,11 @@ export interface SessionUser {
   idNumber: string;
   profilePicture?: string | null;
   
-  // ✅ BAGO — profile fields
-  courseStrand?: string | null;
-  yearLevel?: string | null;
-  dateOfBirth?: string | null;
+  // ✅ MGA PROFILE FIELDS
+  course?: string;
+  yearLevel?: string;
+  dateOfBirth?: string;
+  phone?: string | null;
 }
 
 export interface UserRecord extends SessionUser {
@@ -72,10 +80,6 @@ export interface UserRecord extends SessionUser {
   userCode: string;
   passwordSalt: string;
   passwordHash: string;
-  /**
-   * @deprecated Legacy plaintext password from earlier builds. Records that
-   * still carry it are upgraded to salt + hash by `ensureSeeded()`.
-   */
   password?: string;
 }
 

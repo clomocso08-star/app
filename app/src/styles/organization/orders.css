@@ -1,0 +1,41 @@
+/* ============================================================
+   SJCM ORGANIZATION — ORDERS PAGE STYLES
+   ============================================================ */
+
+.org-shell .order-list-card { padding: 0 !important; overflow: hidden !important; }
+.org-shell .order-list-header { display: flex !important; justify-content: space-between !important; align-items: center !important; flex-wrap: wrap !important; gap: 16px !important; padding: 20px 24px !important; border-bottom: 1px solid var(--bd) !important; }
+.org-shell .order-list-header h3 { font-size: 18px !important; font-weight: 700 !important; margin: 0 !important; color: var(--tx) !important; }
+.org-shell .order-items-list { display: flex !important; flex-direction: column !important; }
+.org-shell .order-item { display: flex !important; align-items: center !important; gap: 20px !important; padding: 20px 24px !important; border-bottom: 1px solid var(--bd) !important; transition: background .2s ease !important; }
+.org-shell .order-item:last-child { border-bottom: none !important; }
+.org-shell .order-item:hover { background: rgba(var(--w), .035) !important; }
+.org-shell .order-item__image { width: 80px !important; height: 80px !important; border-radius: 12px !important; overflow: hidden !important; background: rgba(0, 0, 0, .2) !important; flex-shrink: 0 !important; border: 1px solid var(--bd) !important; display: grid !important; place-items: center !important; }
+.org-shell .order-item__image img { width: 100% !important; height: 100% !important; object-fit: cover !important; transition: transform .35s var(--ease) !important; }
+.org-shell .order-item:hover .order-item__image img { transform: scale(1.06) !important; }
+.org-shell .order-item__placeholder { color: var(--mu) !important; }
+.org-shell .order-item__details { flex: 1 !important; display: flex !important; flex-direction: column !important; gap: 4px !important; min-width: 0 !important; }
+.org-shell .order-item__header { display: flex !important; align-items: center !important; gap: 10px !important; }
+.org-shell .order-item__header h4 { font-size: 16px !important; font-weight: 700 !important; color: var(--tx) !important; margin: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+.org-shell .order-item__id { font-size: 12px !important; font-weight: 600 !important; color: var(--mu) !important; background: rgba(var(--w), .08) !important; padding: 2px 8px !important; border-radius: 6px !important; }
+.org-shell .order-item__meta { font-size: 13px !important; color: var(--sub) !important; }
+.org-shell .order-item__badges { margin-top: 4px !important; }
+.org-shell .order-item__price { font-size: 18px !important; font-weight: 700 !important; color: var(--tx) !important; min-width: 100px !important; text-align: right !important; font-variant-numeric: tabular-nums !important; }
+.org-shell .order-item__actions { display: flex !important; align-items: center !important; gap: 8px !important; }
+
+.org-shell .admin-status-menu { position: relative !important; }
+.org-shell .admin-status-menu__trigger { width: 36px !important; height: 36px !important; border-radius: 8px !important; display: grid !important; place-items: center !important; color: var(--mu) !important; background: transparent !important; transition: all .2s !important; }
+.org-shell .admin-status-menu__trigger:hover { background: rgba(var(--w), .08) !important; color: var(--tx) !important; }
+.org-shell .admin-status-menu__dropdown { position: absolute !important; top: 100% !important; right: 0 !important; margin-top: 8px !important; width: 180px !important; background: var(--s) !important; border: 1px solid var(--bd) !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0, 0, 0, .5) !important; z-index: 50 !important; overflow: hidden !important; padding: 6px !important; animation: orgPop .2s var(--spring) both; transform-origin: top right; }
+.org-shell .admin-status-menu__header { font-size: 11px !important; font-weight: 700 !important; color: var(--mu) !important; text-transform: uppercase !important; letter-spacing: .06em !important; padding: 8px 12px !important; }
+.org-shell .admin-status-menu__item { display: flex !important; align-items: center !important; gap: 10px !important; width: 100% !important; padding: 8px 12px !important; border-radius: 8px !important; font-size: 13px !important; color: var(--tx) !important; text-align: left !important; transition: background .2s !important; }
+.org-shell .admin-status-menu__item:hover { background: rgba(var(--w), .08) !important; }
+.org-shell .admin-status-menu__item.is-current { background: rgba(var(--w), .04) !important; font-weight: 600 !important; }
+.org-shell .admin-status-menu__check { margin-left: auto !important; color: var(--a) !important; }
+.org-shell .empty-text { padding: 48px 24px !important; text-align: center !important; color: var(--mu) !important; font-size: 15px !important; }
+
+@media (max-width: 900px) {
+  .org-shell .order-item { flex-wrap: wrap !important; }
+  .org-shell .order-item__image { width: 60px !important; height: 60px !important; }
+  .org-shell .order-item__price { text-align: left !important; width: 100% !important; margin-top: 8px !important; }
+  .org-shell .order-item__actions { width: 100% !important; justify-content: flex-end !important; margin-top: 12px !important; }
+}
